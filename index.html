@@ -87,6 +87,11 @@
 
   .deck-card-inner {
     display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .deck-card-row {
+    display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
@@ -133,7 +138,7 @@
 
   .fab {
     position: fixed;
-    bottom: 24px;
+    bottom: 32px;
     right: 20px;
     background: var(--accent);
     color: #fff;
@@ -900,13 +905,15 @@ function renderHome() {
     div.dataset.id = deck.id;
     div.innerHTML = `
       <div class="deck-card-inner">
-        <div class="deck-card-text">
-          <h3>${esc(deck.name)}</h3>
-          <div class="deck-meta">${deck.cards.length} word${deck.cards.length !== 1 ? 's' : ''}<br>${daysAgoLabel(deck.lastStudied)}</div>
-        </div>
-        <div class="deck-actions">
-          <button class="btn-primary" data-action="study">Study</button>
-          <button class="btn-secondary" data-action="autoplay">▶ Auto-play</button>
+        <div class="deck-card-row">
+          <div class="deck-card-text">
+            <h3>${esc(deck.name)}</h3>
+            <div class="deck-meta">${deck.cards.length} word${deck.cards.length !== 1 ? 's' : ''} · ${daysAgoLabel(deck.lastStudied)}</div>
+          </div>
+          <div class="deck-actions">
+            <button class="btn-primary" data-action="study">Study</button>
+            <button class="btn-secondary" data-action="autoplay">▶</button>
+          </div>
         </div>
       </div>
     `;
