@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Tarjetas — Spanish Flashcards</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #F7EFE6;
+    --surface: #FFFFFF;
+    --surface-2: #F0EDE8;
+    --ink: #1A1814;
+    --ink-2: #6B6560;
+    --ink-3: #A8A39D;
+    --accent: #D4580A;
+    --accent-light: #FAE8DA;
+    --green: #2D7A4F;
+    --green-light: #D6F0E3;
+    --red: #C0392B;
+    --red-light: #FBDBD8;
+    --border: #E4E0DA;
+    --shadow: 0 2px 12px rgba(26,24,20,0.08);
+    --shadow-lg: 0 8px 40px rgba(26,24,20,0.14);
+    --radius: 16px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .screen { display: none; flex-direction: column; height: 100dvh; overflow: hidden; }
+  .screen.active { display: flex; }
+
+  /* ── HOME ── */
+  #home { overflow-y: auto; padding: 0 0 80px; }
+
+  .home-header {
+    padding: 52px 24px 24px;
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .home-header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+  .home-header h1 span { font-style: italic; color: var(--accent); }
+
+  .deck-list { padding: 8px 16px; }
+
+  .deck-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 20px 20px 16px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    border: 1.5px solid transparent;
+    transition: box-shadow 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
+    touch-action: pan-y;
+  }
+  .deck-card:hover { border-color: var(--accent); }
+  .deck-card:active { opacity: 0.95; }
+  .deck-card.dragging {
+    opacity: 0.5;
+    border-color: var(--accent);
+    box-shadow: var(--shadow-lg);
+  }
+  .deck-card.drag-over {
+    border-color: var(--accent);
+    border-style: dashed;
+  }
+
+  .deck-card-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .deck-card-text { flex: 1; min-width: 0; }
+  .deck-card h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
+  .deck-card .deck-meta { font-size: 12px; color: var(--ink-2); margin-top: 3px; font-style: italic; }
+
+  .deck-card .deck-actions {
+    display: flex;
+    flex-direction: row;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 99px;
+    padding: 8px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-primary:active { opacity: 0.7; transform: scale(0.97); }
+
+  .btn-secondary {
+    background: var(--surface-2);
+    color: var(--ink);
+    border: none;
+    border-radius: 99px;
+    padding: 8px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-secondary:hover { background: var(--border); }
+
+  .fab {
+    position: fixed;
+    bottom: 24px;
+    right: 20px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 99px;
+    padding: 14px 22px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(212,88,10,0.4);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 100;
+    transition: all 0.18s;
+  }
+  .fab:hover { transform: translateY(-2px); }
+  .fab:active { transform: scale(0.96); }
+
+  /* ── STUDY ── */
+  #study { background: var(--bg); }
+
+  .study-header {
+    padding: 16px 20px 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: var(--radius-sm);
+    color: var(--ink-2);
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    transition: background 0.15s;
+  }
+  .btn-icon:hover { background: var(--surface-2); color: var(--ink); }
+
+  .study-header-center { flex: 1; text-align: center; }
+  .study-deck-name { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+  .study-counter { font-size: 12px; color: var(--ink-2); }
+
+  .study-progress-bar { height: 3px; background: var(--surface-2); flex-shrink: 0; }
+  .study-progress-fill { height: 100%; background: var(--accent); transition: width 0.3s ease; }
+
+  .card-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .swipe-hint {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 360px;
+    margin-bottom: 14px;
+    flex-shrink: 0;
+  }
+  .swipe-hint span { font-size: 12px; font-weight: 500; color: var(--ink-3); }
+
+  .flashcard-wrapper {
+    width: 100%;
+    max-width: 360px;
+    perspective: 1200px;
+    flex-shrink: 0;
+  }
+
+  .flashcard {
+    width: 100%;
+    aspect-ratio: 4/3;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.5s cubic-bezier(0.4,0,0.2,1);
+    cursor: pointer;
+    user-select: none;
+  }
+  .flashcard.flipped { transform: rotateY(180deg); }
+  .flashcard.swipe-left {
+    transform: translateX(-140%) rotate(-20deg) !important;
+    opacity: 0;
+    transition: transform 0.35s ease, opacity 0.35s ease !important;
+  }
+  .flashcard.swipe-right {
+    transform: translateX(140%) rotate(20deg) !important;
+    opacity: 0;
+    transition: transform 0.35s ease, opacity 0.35s ease !important;
+  }
+
+  .card-face {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 28px 24px;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .card-front { background: var(--surface); border: 1.5px solid var(--border); }
+  .card-back { background: var(--ink); transform: rotateY(180deg); }
+
+  .card-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 10px;
+  }
+  .card-back .card-label { color: rgba(255,255,255,0.3); }
+
+  .card-word {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    text-align: center;
+    line-height: 1.25;
+    letter-spacing: -0.3px;
+    color: var(--ink);
+  }
+  .card-back .card-word { color: #fff; }
+
+  .card-context {
+    font-size: 13px;
+    color: var(--ink-2);
+    margin-top: 10px;
+    text-align: center;
+    font-style: italic;
+    line-height: 1.4;
+  }
+  .card-back .card-context { color: rgba(255,255,255,0.45); }
+
+  .card-tap-hint { margin-top: 18px; font-size: 11px; color: var(--ink-3); }
+
+  .btn-speaker {
+    margin-top: 16px;
+    background: rgba(255,255,255,0.12);
+    border: none;
+    border-radius: 99px;
+    padding: 7px 14px;
+    color: #fff;
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s;
+  }
+  .btn-speaker:hover { background: rgba(255,255,255,0.2); }
+
+  .swipe-badge {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 8px 16px;
+    border-radius: 99px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.1s;
+  }
+  .swipe-badge.know { right: 16px; background: var(--green-light); color: var(--green); border: 2px solid var(--green); }
+  .swipe-badge.skip { left: 16px; background: var(--red-light); color: var(--red); border: 2px solid var(--red); }
+
+  .study-actions {
+    padding: 14px 20px 22px;
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .action-btn {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.18s;
+    box-shadow: var(--shadow);
+    color: var(--ink-2);
+  }
+  .action-btn:hover { transform: scale(1.08); }
+  .action-btn.wrong { border-color: var(--red); color: var(--red); }
+  .action-btn.wrong:hover { background: var(--red-light); }
+  .action-btn.right { border-color: var(--green); color: var(--green); }
+  .action-btn.right:hover { background: var(--green-light); }
+  .action-btn.neutral:hover { background: var(--surface-2); }
+
+  .round-complete {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    text-align: center;
+  }
+  .round-complete .big-emoji { font-size: 60px; margin-bottom: 18px; }
+  .round-complete h2 { font-family: 'DM Serif Display', serif; font-size: 28px; letter-spacing: -0.4px; margin-bottom: 8px; }
+  .round-complete p { color: var(--ink-2); font-size: 15px; margin-bottom: 28px; }
+  .round-complete .stat-row { display: flex; gap: 16px; margin-bottom: 32px; }
+  .stat-box { background: var(--surface); border-radius: var(--radius); padding: 16px 24px; box-shadow: var(--shadow); }
+  .stat-box .stat-num { font-family: 'DM Serif Display', serif; font-size: 32px; color: var(--accent); }
+  .stat-box .stat-label { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+
+  /* ── AUTOPLAY ── */
+  #autoplay { background: var(--ink); }
+
+  .autoplay-header {
+    padding: 20px 20px 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .autoplay-header .btn-icon { color: rgba(255,255,255,0.5); }
+  .autoplay-header .btn-icon:hover { color: #fff; background: rgba(255,255,255,0.1); }
+  .autoplay-title { flex: 1; font-size: 15px; font-weight: 600; color: #fff; }
+
+  .autoplay-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    gap: 24px;
+  }
+
+  .autoplay-card {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: var(--radius);
+    width: 100%;
+    max-width: 360px;
+    padding: 36px 28px;
+    text-align: center;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .autoplay-lang-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+  }
+
+  .autoplay-word {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    color: #fff;
+    line-height: 1.25;
+    letter-spacing: -0.3px;
+  }
+
+  .autoplay-divider {
+    width: 32px;
+    height: 1px;
+    background: rgba(255,255,255,0.15);
+    margin: 4px 0;
+  }
+
+  .autoplay-spanish {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    color: var(--accent);
+    font-style: italic;
+    line-height: 1.25;
+    transition: opacity 0.5s ease;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .autoplay-progress { width: 100%; max-width: 360px; }
+  .autoplay-progress-track {
+    height: 3px;
+    background: rgba(255,255,255,0.12);
+    border-radius: 99px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .autoplay-progress-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.3s ease; }
+  .autoplay-progress-label { text-align: center; font-size: 12px; color: rgba(255,255,255,0.3); }
+
+  .autoplay-controls { display: flex; gap: 16px; align-items: center; }
+
+  .ctrl-btn {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    border-radius: 50%;
+    width: 52px;
+    height: 52px;
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+  }
+  .ctrl-btn:hover { background: rgba(255,255,255,0.18); }
+
+  /* Play and pause buttons share the same style */
+  .ctrl-btn.play-pause {
+    width: 64px;
+    height: 64px;
+    font-size: 22px;
+    background: var(--accent);
+    box-shadow: 0 4px 20px rgba(212,88,10,0.5);
+  }
+  .ctrl-btn.play-pause:hover { background: #E8650F; }
+
+  /* ── MODALS ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(26,24,20,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border-radius: 24px 24px 0 0;
+    width: 100%;
+    max-width: 480px;
+    padding: 28px 24px 40px;
+    max-height: 85dvh;
+    overflow-y: auto;
+    animation: slideUp 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  @keyframes slideUp {
+    from { transform: translateY(40px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .modal h2 { font-family: 'DM Serif Display', serif; font-size: 22px; margin-bottom: 20px; letter-spacing: -0.3px; }
+
+  .form-group { margin-bottom: 16px; }
+  .form-group label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-2);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
+  }
+  .form-group input, .form-group select {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-size: 15px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .modal-actions .btn-primary { flex: 1; padding: 14px; font-size: 15px; border-radius: var(--radius-sm); }
+  .modal-actions .btn-secondary { padding: 14px 20px; border-radius: var(--radius-sm); }
+
+  .word-list { margin-top: 8px; }
+  .word-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .word-item:last-child { border-bottom: none; }
+  .word-en { flex: 1; font-size: 14px; font-weight: 500; }
+  .word-es { flex: 1; font-size: 14px; color: var(--accent); font-style: italic; }
+  .word-delete {
+    background: none;
+    border: none;
+    color: var(--ink-3);
+    cursor: pointer;
+    font-size: 15px;
+    padding: 4px;
+    border-radius: 4px;
+    transition: color 0.15s;
+  }
+  .word-delete:hover { color: var(--red); }
+
+  #deck-detail-name { font-family: 'DM Serif Display', serif; font-size: 22px; margin-bottom: 4px; letter-spacing: -0.3px; }
+  #deck-detail-count { color: var(--ink-2); font-size: 13px; margin-bottom: 20px; }
+
+  .toast {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 99px;
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0;
+    transition: all 0.25s;
+    z-index: 300;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="home" class="screen active">
+  <div class="home-header">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between">
+      <h1>Tarjetas<br><span>flash cards</span></h1>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;padding-top:4px">
+        <button id="sync-indicator" onclick="handleSyncTap()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--ink-3);padding:4px;" title="Not connected">⊙</button>
+        <button id="sync-label-btn" onclick="openSyncModal()" style="background:none;border:none;font-size:11px;color:var(--ink-3);cursor:pointer;font-family:'DM Sans',sans-serif;padding:0;">Connect Sheet</button>
+      </div>
+    </div>
+  </div>
+  <div class="deck-list" id="deck-list"></div>
+  <button class="fab" onclick="openAddDeckModal()">＋ New deck</button>
+</div>
+
+<!-- STUDY -->
+<div id="study" class="screen">
+  <div class="study-header">
+    <button class="btn-icon" onclick="exitStudy()">←</button>
+    <div class="study-header-center">
+      <div class="study-deck-name" id="study-deck-name"></div>
+      <div class="study-counter" id="study-counter"></div>
+    </div>
+    <button class="btn-icon" onclick="openDeckDetailModal(currentDeckId)">⋯</button>
+  </div>
+  <div class="study-progress-bar"><div class="study-progress-fill" id="study-progress-fill"></div></div>
+  <div class="card-area" id="card-area"></div>
+  <div class="study-actions" id="study-actions">
+    <button class="action-btn wrong" onclick="swipeCard('left')" title="Didn't know it">✕</button>
+    <button class="action-btn neutral" onclick="flipCard()" title="Flip">↻</button>
+    <button class="action-btn right" onclick="swipeCard('right')" title="Knew it">✓</button>
+  </div>
+</div>
+
+<!-- AUTOPLAY -->
+<div id="autoplay" class="screen">
+  <div class="autoplay-header">
+    <button class="btn-icon" onclick="exitAutoplay()">←</button>
+    <div class="autoplay-title" id="autoplay-deck-name"></div>
+  </div>
+  <div class="autoplay-body">
+    <div class="autoplay-card">
+      <div class="autoplay-lang-label">English</div>
+      <div class="autoplay-word" id="autoplay-en-word">—</div>
+      <div class="autoplay-divider"></div>
+      <div class="autoplay-lang-label">Español</div>
+      <div class="autoplay-spanish" id="autoplay-es-word" style="opacity:0">—</div>
+    </div>
+    <div class="autoplay-progress">
+      <div class="autoplay-progress-track">
+        <div class="autoplay-progress-fill" id="autoplay-progress-fill" style="width:0%"></div>
+      </div>
+      <div class="autoplay-progress-label" id="autoplay-counter">1 / 1</div>
+    </div>
+    <div class="autoplay-controls">
+      <button class="ctrl-btn" onclick="autoplayPrev()" title="Previous">◀</button>
+      <button class="ctrl-btn play-pause" id="autoplay-playbtn" onclick="toggleAutoplay()">
+        <svg id="playbtn-icon" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- pause bars (default state) -->
+          <rect x="4" y="3" width="5" height="16" rx="1.5" fill="white"/>
+          <rect x="13" y="3" width="5" height="16" rx="1.5" fill="white"/>
+        </svg>
+      </button>
+      <button class="ctrl-btn" onclick="autoplayNext()" title="Next">▶</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add/Edit Deck -->
+<div class="modal-overlay" id="modal-deck">
+  <div class="modal">
+    <h2 id="modal-deck-title">New deck</h2>
+    <div class="form-group">
+      <label>Deck name</label>
+      <input type="text" id="deck-name-input" placeholder="e.g. Food &amp; Drinks" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('modal-deck')">Cancel</button>
+      <button class="btn-primary" id="save-deck-btn" onclick="saveDeck()">Create deck</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add Word -->
+<div class="modal-overlay" id="modal-word">
+  <div class="modal">
+    <h2>Add a word</h2>
+    <div class="form-group">
+      <label>English</label>
+      <input type="text" id="word-en-input" placeholder="e.g. hello" />
+    </div>
+    <div class="form-group">
+      <label>Spanish</label>
+      <input type="text" id="word-es-input" placeholder="e.g. hola" />
+    </div>
+    <div class="form-group">
+      <label>Context / example (optional)</label>
+      <input type="text" id="word-ctx-input" placeholder="e.g. ¡Hola, buenos días!" />
+    </div>
+    <div class="form-group">
+      <label>Deck</label>
+      <select id="word-deck-select"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('modal-word')">Cancel</button>
+      <button class="btn-primary" onclick="saveWord()">Add word</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Deck Detail -->
+<div class="modal-overlay" id="modal-deck-detail">
+  <div class="modal">
+    <div id="deck-detail-name"></div>
+    <div id="deck-detail-count"></div>
+    <div class="modal-actions" style="margin-top:0;margin-bottom:20px">
+      <button class="btn-primary" onclick="openAddWordModal(currentDetailDeckId); closeModal('modal-deck-detail')">＋ Add word</button>
+      <button class="btn-secondary" onclick="editDeck(currentDetailDeckId); closeModal('modal-deck-detail')">Edit deck</button>
+      <button class="btn-secondary" style="color:var(--red)" onclick="confirmDeleteDeck(currentDetailDeckId)">Delete</button>
+    </div>
+    <div class="word-list" id="detail-word-list"></div>
+  </div>
+</div>
+
+<!-- MODAL: Sync Setup -->
+<div class="modal-overlay" id="modal-sync">
+  <div class="modal">
+    <h2>Connect Google Sheet</h2>
+    <p style="color:var(--ink-2);font-size:14px;line-height:1.6;margin-bottom:20px">
+      Paste your Apps Script web app URL below to sync your decks across all devices.
+    </p>
+    <div class="form-group">
+      <label>Apps Script URL</label>
+      <input type="url" id="sync-url-input" placeholder="https://script.google.com/macros/s/…/exec" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('modal-sync')">Cancel</button>
+      <button class="btn-primary" onclick="saveScriptUrl()">Save & Sync</button>
+    </div>
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+      <button onclick="disconnectSheet()" style="background:none;border:none;color:var(--red);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Disconnect sheet</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DEFAULT DATA ──
+const defaultDecks = [
+  {
+    id: 'deck-1', name: 'Greetings & Basics', lastStudied: null,
+    cards: [
+      { id:'c1', en:'Hello', es:'Hola', ctx:'' },
+      { id:'c2', en:'Good morning', es:'Buenos días', ctx:'' },
+      { id:'c3', en:'Good afternoon', es:'Buenas tardes', ctx:'' },
+      { id:'c4', en:'Good night', es:'Buenas noches', ctx:'' },
+      { id:'c5', en:'How are you?', es:'¿Cómo estás?', ctx:'' },
+      { id:'c6', en:'I\'m fine, thank you', es:'Estoy bien, gracias', ctx:'' },
+      { id:'c7', en:'Please', es:'Por favor', ctx:'' },
+      { id:'c8', en:'Thank you', es:'Gracias', ctx:'' },
+      { id:'c9', en:'You\'re welcome', es:'De nada', ctx:'' },
+      { id:'c10', en:'Goodbye', es:'Adiós', ctx:'' },
+      { id:'c11', en:'See you later', es:'Hasta luego', ctx:'' },
+      { id:'c12', en:'Excuse me', es:'Perdona', ctx:'' },
+    ]
+  },
+  {
+    id: 'deck-2', name: 'Numbers 1–10', lastStudied: null,
+    cards: [
+      { id:'n1', en:'One', es:'Uno', ctx:'' },
+      { id:'n2', en:'Two', es:'Dos', ctx:'' },
+      { id:'n3', en:'Three', es:'Tres', ctx:'' },
+      { id:'n4', en:'Four', es:'Cuatro', ctx:'' },
+      { id:'n5', en:'Five', es:'Cinco', ctx:'' },
+      { id:'n6', en:'Six', es:'Seis', ctx:'' },
+      { id:'n7', en:'Seven', es:'Siete', ctx:'' },
+      { id:'n8', en:'Eight', es:'Ocho', ctx:'' },
+      { id:'n9', en:'Nine', es:'Nueve', ctx:'' },
+      { id:'n10', en:'Ten', es:'Diez', ctx:'' },
+    ]
+  },
+  {
+    id: 'deck-3', name: 'Food & Drinks', lastStudied: null,
+    cards: [
+      { id:'f1', en:'Water', es:'Agua', ctx:'Un vaso de agua, por favor.' },
+      { id:'f2', en:'Coffee', es:'Café', ctx:'Me gustaría un café.' },
+      { id:'f3', en:'Bread', es:'Pan', ctx:'' },
+      { id:'f4', en:'Meat', es:'Carne', ctx:'' },
+      { id:'f5', en:'Fish', es:'Pescado', ctx:'' },
+      { id:'f6', en:'Vegetable', es:'Verdura', ctx:'' },
+      { id:'f7', en:'Fruit', es:'Fruta', ctx:'' },
+      { id:'f8', en:'Wine', es:'Vino', ctx:'Un vino tinto, por favor.' },
+      { id:'f9', en:'Beer', es:'Cerveza', ctx:'' },
+      { id:'f10', en:'Cheese', es:'Queso', ctx:'' },
+    ]
+  },
+  {
+    id: 'deck-4', name: 'Useful Phrases', lastStudied: null,
+    cards: [
+      { id:'p1', en:'I don\'t understand', es:'No entiendo', ctx:'' },
+      { id:'p2', en:'Can you repeat that?', es:'¿Puede repetirlo?', ctx:'' },
+      { id:'p3', en:'Where is...?', es:'¿Dónde está...?', ctx:'¿Dónde está el baño?' },
+      { id:'p4', en:'How much does it cost?', es:'¿Cuánto cuesta?', ctx:'' },
+      { id:'p5', en:'I would like...', es:'Me gustaría...', ctx:'Me gustaría una mesa para dos.' },
+      { id:'p6', en:'Do you speak English?', es:'¿Habla inglés?', ctx:'' },
+      { id:'p7', en:'I don\'t speak Spanish well', es:'No hablo bien el español', ctx:'' },
+      { id:'p8', en:'What is your name?', es:'¿Cómo te llamas?', ctx:'' },
+      { id:'p9', en:'My name is...', es:'Me llamo...', ctx:'Me llamo Adam.' },
+      { id:'p10', en:'Nice to meet you', es:'Mucho gusto', ctx:'' },
+    ]
+  }
+];
+
+// ── STATE ──
+let decks = [];
+let editingDeckId = null;
+let currentDetailDeckId = null;
+let currentDeckId = null;
+let studyQueue = [];
+let missedCards = [];
+let currentCardIndex = 0;
+let isFlipped = false;
+let roundKnown = 0;
+let totalCards = 0;  // total cards in the session (never changes)
+
+let autoplayDeckId = null;
+let autoplayIndex = 0;
+let autoplayPlaying = false;
+let autoplayTimer = null;
+
+// ── PERSISTENCE & SYNC ──
+let scriptUrl = localStorage.getItem('tarjetas-script-url') || '';
+let syncStatus = 'idle'; // idle | syncing | error | ok
+
+function save() {
+  localStorage.setItem('tarjetas-decks', JSON.stringify(decks));
+  if (scriptUrl) syncToSheet();
+}
+
+function load() {
+  const raw = localStorage.getItem('tarjetas-decks');
+  decks = raw ? JSON.parse(raw) : defaultDecks.map(d => ({...d, cards: d.cards.map(c => ({...c}))}));
+  if (!raw) localStorage.setItem('tarjetas-decks', JSON.stringify(decks));
+}
+
+async function syncFromSheet() {
+  if (!scriptUrl) return;
+  setSyncStatus('syncing');
+  try {
+    const res = await fetch(scriptUrl + '?action=read');
+    const data = await res.json();
+    if (data.ok && data.decks) {
+      decks = data.decks;
+      localStorage.setItem('tarjetas-decks', JSON.stringify(decks));
+      setSyncStatus('ok');
+      renderHome();
+    } else {
+      setSyncStatus('error');
+    }
+  } catch (e) {
+    setSyncStatus('error');
+  }
+}
+
+async function syncToSheet() {
+  if (!scriptUrl) return;
+  setSyncStatus('syncing');
+  try {
+    const res = await fetch(scriptUrl, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'write', data: decks }),
+    });
+    const data = await res.json();
+    setSyncStatus(data.ok ? 'ok' : 'error');
+  } catch (e) {
+    setSyncStatus('error');
+  }
+}
+
+function setSyncStatus(status) {
+  syncStatus = status;
+  const el = document.getElementById('sync-indicator');
+  if (!el) return;
+  const icons = { syncing: '⟳', ok: '✓', error: '!', idle: '⊙' };
+  const colors = { syncing: 'var(--ink-3)', ok: 'var(--green)', error: 'var(--red)', idle: 'var(--ink-3)' };
+  el.textContent = icons[status] || '⊙';
+  el.style.color = colors[status] || 'var(--ink-3)';
+  el.title = { syncing: 'Syncing…', ok: 'Synced', error: 'Sync failed — tap to retry', idle: 'Not connected' }[status];
+}
+function uid() { return 'id-' + Math.random().toString(36).slice(2); }
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── HOME ──
+function daysAgoLabel(ts) {
+  if (!ts) return 'Never studied';
+  const days = Math.floor((Date.now() - ts) / 86400000);
+  if (days === 0) return 'Studied today';
+  if (days === 1) return 'Studied yesterday';
+  return `Studied ${days} days ago`;
+}
+
+function renderHome() {
+  const labelBtn = document.getElementById('sync-label-btn');
+  if (labelBtn) labelBtn.textContent = scriptUrl ? 'Synced via Sheet' : 'Connect Sheet';
+  const list = document.getElementById('deck-list');
+  list.innerHTML = '';
+  decks.forEach(deck => {
+    const div = document.createElement('div');
+    div.className = 'deck-card';
+    div.dataset.id = deck.id;
+    div.innerHTML = `
+      <div class="deck-card-inner">
+        <div class="deck-card-text">
+          <h3>${esc(deck.name)}</h3>
+          <div class="deck-meta">${deck.cards.length} word${deck.cards.length !== 1 ? 's' : ''}<br>${daysAgoLabel(deck.lastStudied)}</div>
+        </div>
+        <div class="deck-actions">
+          <button class="btn-primary" data-action="study">Study</button>
+          <button class="btn-secondary" data-action="autoplay">▶ Auto-play</button>
+        </div>
+      </div>
+    `;
+
+    div.querySelector('[data-action="study"]').addEventListener('click', e => {
+      e.stopPropagation(); startStudy(deck.id);
+    });
+    div.querySelector('[data-action="autoplay"]').addEventListener('click', e => {
+      e.stopPropagation(); startAutoplay(deck.id);
+    });
+
+    attachDeckCardBehavior(div, deck.id);
+    list.appendChild(div);
+  });
+}
+
+function attachDeckCardBehavior(div, deckId) {
+  let longPressTimer = null;
+  let dragging = false;
+  let startY = 0;
+  let ghost = null;
+  let ghostOffsetY = 0;
+
+  const cancelLong = () => { clearTimeout(longPressTimer); };
+
+  let dragCardH = 0;
+
+  const beginDrag = (clientY) => {
+    dragging = true;
+    div.classList.add('dragging');
+    dragCardH = div.getBoundingClientRect().height;
+
+    // Create a visual ghost clone
+    const rect = div.getBoundingClientRect();
+    ghostOffsetY = clientY - rect.top;
+    ghost = div.cloneNode(true);
+    ghost.style.cssText = `
+      position: fixed;
+      left: ${rect.left}px;
+      width: ${rect.width}px;
+      top: ${clientY - ghostOffsetY}px;
+      z-index: 999;
+      opacity: 0.85;
+      pointer-events: none;
+      box-shadow: 0 12px 40px rgba(26,24,20,0.2);
+      border: 1.5px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--surface);
+      padding: 20px 20px 16px;
+      transition: none;
+    `;
+    document.body.appendChild(ghost);
+  };
+
+  let currentTargetId = null;
+
+  const moveDrag = (clientY) => {
+    if (!dragging) return;
+    ghost.style.top = (clientY - ghostOffsetY) + 'px';
+
+    const list = document.getElementById('deck-list');
+    const fromIdx = decks.findIndex(d => d.id === deckId);
+    const cards = [...list.querySelectorAll('.deck-card:not(.dragging)')];
+
+    // Find where the ghost would land
+    let insertBefore = null; // the card we'd insert before (null = end)
+    for (const card of cards) {
+      const rect = card.getBoundingClientRect();
+      if (clientY < rect.top + rect.height / 2) { insertBefore = card; break; }
+    }
+
+    const targetId = insertBefore ? insertBefore.dataset.id : '__end__';
+    if (targetId === currentTargetId) return;
+    currentTargetId = targetId;
+
+    const toIdx = insertBefore ? decks.findIndex(d => d.id === insertBefore.dataset.id) : decks.length;
+    const cardH = dragCardH + 12; // height + margin-bottom
+
+    cards.forEach((card, i) => {
+      const cardDeckIdx = decks.findIndex(d => d.id === card.dataset.id);
+      let shift = 0;
+      if (fromIdx < toIdx) {
+        // dragging down: cards between from+1 and to shift UP
+        if (cardDeckIdx > fromIdx && cardDeckIdx < toIdx) shift = -cardH;
+      } else {
+        // dragging up: cards between to and from-1 shift DOWN
+        if (cardDeckIdx >= toIdx && cardDeckIdx < fromIdx) shift = cardH;
+      }
+      card.style.transition = 'transform 0.32s cubic-bezier(0.4,0,0.2,1)';
+      card.style.transform = shift ? `translateY(${shift}px)` : '';
+    });
+  };
+
+  const endDrag = (clientY) => {
+    if (!dragging) return;
+    dragging = false;
+    currentTargetId = null;
+    div.classList.remove('dragging');
+    if (ghost) { ghost.remove(); ghost = null; }
+
+    const list = document.getElementById('deck-list');
+    const cards = [...list.querySelectorAll('.deck-card')];
+    // Reset all transforms instantly
+    cards.forEach(c => { c.style.transition = 'none'; c.style.transform = ''; });
+
+    const otherCards = [...list.querySelectorAll('.deck-card:not(.dragging)')];
+    otherCards.forEach(c => c.classList.remove('drag-over'));
+
+    let target = null;
+    for (const card of otherCards) {
+      const rect = card.getBoundingClientRect();
+      if (clientY < rect.top + rect.height / 2) { target = card; break; }
+    }
+
+    if (target && target.dataset.id !== deckId) {
+      reorderDecks(deckId, target.dataset.id);
+    } else if (!target) {
+      const fromIdx = decks.findIndex(d => d.id === deckId);
+      if (fromIdx !== -1 && fromIdx !== decks.length - 1) {
+        const [moved] = decks.splice(fromIdx, 1);
+        decks.push(moved);
+        save(); renderHome();
+      }
+    }
+  };
+
+  // ── Mouse long-press ──
+  div.addEventListener('mousedown', e => {
+    if (e.target.closest('button')) return;
+    startY = e.clientY;
+    longPressTimer = setTimeout(() => {
+      beginDrag(e.clientY);
+
+      const onMove = e => moveDrag(e.clientY);
+      const onUp = e => {
+        endDrag(e.clientY);
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    }, 500);
+  });
+  div.addEventListener('mouseup', cancelLong);
+  div.addEventListener('mouseleave', cancelLong);
+
+  // ── Touch long-press ──
+  div.addEventListener('touchstart', e => {
+    if (e.target.closest('button')) return;
+    startY = e.touches[0].clientY;
+    longPressTimer = setTimeout(() => {
+      beginDrag(e.touches[0].clientY);
+
+      const onMove = e => { e.preventDefault(); moveDrag(e.touches[0].clientY); };
+      const onEnd = e => {
+        endDrag(e.changedTouches[0].clientY);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onEnd);
+      };
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend', onEnd);
+    }, 500);
+  }, { passive: true });
+  div.addEventListener('touchend', cancelLong);
+  div.addEventListener('touchmove', e => {
+    // Cancel long press if user scrolls
+    if (Math.abs(e.touches[0].clientY - startY) > 8) cancelLong();
+  }, { passive: true });
+
+  // ── Short tap → open detail ──
+  div.addEventListener('click', e => {
+    if (!dragging && !e.target.closest('button')) openDeckDetailModal(deckId);
+  });
+}
+
+function reorderDecks(fromId, toId) {
+  const fromIdx = decks.findIndex(d => d.id === fromId);
+  const toIdx = decks.findIndex(d => d.id === toId);
+  if (fromIdx === -1 || toIdx === -1) return;
+  const [moved] = decks.splice(fromIdx, 1);
+  decks.splice(toIdx, 0, moved);
+  save(); renderHome();
+}
+
+// ── STUDY ──
+function startStudy(deckId) {
+  const deck = decks.find(d => d.id === deckId);
+  if (!deck || !deck.cards.length) { showToast('No cards in this deck!'); return; }
+  // Record last studied
+  deck.lastStudied = Date.now();
+  save();
+
+  currentDeckId = deckId;
+  studyQueue = shuffle([...deck.cards]);
+  missedCards = [];
+  roundKnown = 0;
+  totalCards = studyQueue.length;
+  currentCardIndex = 0;
+  isFlipped = false;
+
+  showScreen('study');
+  document.getElementById('study-deck-name').textContent = deck.name;
+  document.getElementById('study-actions').style.display = '';
+  renderStudyCard();
+}
+
+function exitStudy() { showScreen('home'); renderHome(); }
+
+function renderStudyCard() {
+  const area = document.getElementById('card-area');
+  if (currentCardIndex >= studyQueue.length) { showRoundComplete(); return; }
+  const card = studyQueue[currentCardIndex];
+  isFlipped = false;
+  updateStudyCounter();
+  area.innerHTML = `
+    <div class="swipe-hint">
+      <span>← Didn't know</span>
+      <span>Knew it →</span>
+    </div>
+    <div class="flashcard-wrapper">
+      <div class="flashcard" id="flashcard">
+        <div class="card-face card-front" id="card-front">
+          <div class="card-label">English</div>
+          <div class="card-word">${esc(card.en)}</div>
+          <div class="card-tap-hint">Tap to reveal</div>
+        </div>
+        <div class="card-face card-back" id="card-back">
+          <div class="card-label">Español</div>
+          <div class="card-word">${esc(card.es)}</div>
+          ${card.ctx ? `<div class="card-context">${esc(card.ctx)}</div>` : ''}
+          <button class="btn-speaker" id="btn-speaker">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="swipe-badge know">✓ Knew it</div>
+        <div class="swipe-badge skip">✕ Again</div>
+      </div>
+    </div>
+  `;
+  setupSwipe();
+}
+
+function updateStudyCounter() {
+  // Show progress across the whole session: known / total
+  const done = roundKnown;
+  const total = totalCards;
+  document.getElementById('study-counter').textContent = `${done} / ${total} known`;
+  document.getElementById('study-progress-fill').style.width = (total ? done/total*100 : 0) + '%';
+}
+
+function flipCard() {
+  const fc = document.getElementById('flashcard');
+  if (!fc) return;
+  isFlipped = !isFlipped;
+  fc.classList.toggle('flipped', isFlipped);
+  if (isFlipped) setTimeout(() => speakSpanishAuto(studyQueue[currentCardIndex].es), 500);
+}
+
+function swipeCard(dir) {
+  const fc = document.getElementById('flashcard');
+  if (!fc) return;
+  const card = studyQueue[currentCardIndex];
+  if (dir === 'left') {
+    fc.classList.add('swipe-left');
+    missedCards.push(card);
+  } else {
+    fc.classList.add('swipe-right');
+    roundKnown++;
+  }
+  setTimeout(() => { currentCardIndex++; renderStudyCard(); }, 350);
+}
+
+function showRoundComplete() {
+  const area = document.getElementById('card-area');
+  document.getElementById('study-actions').style.display = 'none';
+  document.getElementById('study-progress-fill').style.width = (totalCards ? roundKnown/totalCards*100 : 100) + '%';
+
+  if (missedCards.length === 0) {
+    area.innerHTML = `
+      <div class="round-complete">
+        <div class="big-emoji">🎉</div>
+        <h2>Perfecto!</h2>
+        <p>You knew all ${totalCards} cards. ¡Muy bien!</p>
+        <div class="stat-row">
+          <div class="stat-box"><div class="stat-num">${totalCards}</div><div class="stat-label">Cards done</div></div>
+          <div class="stat-box"><div class="stat-num">100%</div><div class="stat-label">Success</div></div>
+        </div>
+        <button class="btn-primary" onclick="restartStudy()" style="padding:14px 32px;font-size:15px">Study again</button>
+      </div>
+    `;
+  } else {
+    area.innerHTML = `
+      <div class="round-complete">
+        <div class="big-emoji">💪</div>
+        <h2>Round complete</h2>
+        <p>You missed <strong>${missedCards.length}</strong> card${missedCards.length !== 1 ? 's' : ''}. Let's go again!</p>
+        <div class="stat-row">
+          <div class="stat-box"><div class="stat-num">${roundKnown}</div><div class="stat-label">Knew it</div></div>
+          <div class="stat-box"><div class="stat-num">${missedCards.length}</div><div class="stat-label">Try again</div></div>
+        </div>
+        <button class="btn-primary" onclick="nextRound()" style="padding:14px 32px;font-size:15px">Next round →</button>
+      </div>
+    `;
+  }
+}
+
+function nextRound() {
+  studyQueue = shuffle([...missedCards]);
+  missedCards = [];
+  currentCardIndex = 0;
+  document.getElementById('study-actions').style.display = '';
+  renderStudyCard();
+}
+
+function restartStudy() { startStudy(currentDeckId); }
+
+// ── SWIPE ──
+function setupSwipe() {
+  const fc = document.getElementById('flashcard');
+  const front = document.getElementById('card-front');
+  const back = document.getElementById('card-back');
+  const speaker = document.getElementById('btn-speaker');
+  if (!fc || !front || !back) return;
+
+  const card = studyQueue[currentCardIndex];
+
+  // Front face: tap flips to Spanish
+  front.addEventListener('click', () => { if (!isDragging) flipCard(); });
+
+  // Speaker button: read Spanish aloud, don't flip
+  if (speaker) {
+    speaker.addEventListener('click', (e) => {
+      e.stopPropagation();
+      speakText(card.es, 'es');
+    });
+  }
+
+  // Back face: tap anywhere (except speaker) flips back to English
+  back.addEventListener('click', (e) => {
+    if (!isDragging && e.target !== speaker && !speaker.contains(e.target)) {
+      flipCard();
+    }
+  });
+
+  let startX = 0, startY = 0;
+  let isDragging = false;
+  let mouseDown = false;
+  let dragMoved = false;
+
+  const onDrag = (dx) => {
+    isDragging = true;
+    if (fc.classList.contains('flipped')) {
+      fc.style.transform = `rotateY(180deg) translateX(${-dx}px) rotate(${-dx * 0.03}deg)`;
+    } else {
+      fc.style.transform = `translateX(${dx}px) rotate(${dx * 0.03}deg)`;
+    }
+    fc.querySelector('.swipe-badge.know').style.opacity = dx > 20 ? Math.min((dx-20)/50,1) : 0;
+    fc.querySelector('.swipe-badge.skip').style.opacity = dx < -20 ? Math.min((-dx-20)/50,1) : 0;
+  };
+
+  const onRelease = (dx) => {
+    fc.style.transform = '';
+    if (fc.classList.contains('flipped')) fc.style.transform = 'rotateY(180deg)';
+    fc.querySelector('.swipe-badge.know').style.opacity = 0;
+    fc.querySelector('.swipe-badge.skip').style.opacity = 0;
+    if (Math.abs(dx) > 50) {
+      if (dx > 0) swipeCard('right'); else swipeCard('left');
+    }
+    setTimeout(() => { isDragging = false; }, 0);
+  };
+
+  fc.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+    isDragging = false; dragMoved = false;
+  }, { passive: true });
+
+  fc.addEventListener('touchmove', e => {
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (!dragMoved && Math.abs(dx) < Math.abs(dy) * 0.8) return;
+    dragMoved = true;
+    onDrag(dx);
+  }, { passive: true });
+
+  fc.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    if (dragMoved) {
+      onRelease(dx);
+    }
+    dragMoved = false;
+  });
+
+  fc.addEventListener('mousedown', e => {
+    mouseDown = true; startX = e.clientX; isDragging = false; dragMoved = false;
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', e => {
+    if (!mouseDown) return;
+    const dx = e.clientX - startX;
+    if (Math.abs(dx) > 5) { dragMoved = true; onDrag(dx); }
+  });
+  window.addEventListener('mouseup', e => {
+    if (!mouseDown) return;
+    mouseDown = false;
+    const dx = e.clientX - startX;
+    if (dragMoved) onRelease(dx);
+    dragMoved = false;
+  });
+}
+
+// ── AUTOPLAY ──
+function startAutoplay(deckId) {
+  const deck = decks.find(d => d.id === deckId);
+  if (!deck || !deck.cards.length) { showToast('No cards in this deck!'); return; }
+  autoplayDeckId = deckId;
+  autoplayIndex = 0;
+  autoplayPlaying = true;
+  document.getElementById('autoplay-deck-name').textContent = deck.name;
+  setPlayBtnIcon(true);
+  showScreen('autoplay');
+  autoplayShowCard(autoplayIndex, true);
+}
+
+function exitAutoplay() {
+  stopAutoplayTimer();
+  showScreen('home');
+}
+
+function autoplayShowCard(idx, andSchedule) {
+  const deck = decks.find(d => d.id === autoplayDeckId);
+  if (!deck) return;
+  const card = deck.cards[idx];
+  document.getElementById('autoplay-en-word').textContent = card.en;
+  const esEl = document.getElementById('autoplay-es-word');
+  esEl.textContent = card.es;
+  esEl.style.opacity = '0';
+  const total = deck.cards.length;
+  document.getElementById('autoplay-counter').textContent = `${idx+1} / ${total}`;
+  document.getElementById('autoplay-progress-fill').style.width = ((idx+1)/total*100) + '%';
+  setTimeout(() => speakText(card.en, 'en'), autoplayIndex === 0 && andSchedule ? 500 : 0);
+  if (andSchedule) scheduleAutoplay();
+}
+
+function scheduleAutoplay() {
+  stopAutoplayTimer();
+  // Wait 2s after English is spoken, then reveal + speak Spanish
+  autoplayTimer = setTimeout(() => {
+    const deck = decks.find(d => d.id === autoplayDeckId);
+    if (!deck || !autoplayPlaying) return;
+    const card = deck.cards[autoplayIndex];
+    const esEl = document.getElementById('autoplay-es-word');
+    if (esEl) esEl.style.opacity = '1';
+    // Speak Spanish and measure how long it takes, then wait 3s after it ends
+    speakTextWithCallback(card.es, 'es', () => {
+      // 3s after Spanish finishes → next card
+      autoplayTimer = setTimeout(() => {
+        if (!autoplayPlaying) return;
+        const nextIdx = autoplayIndex + 1;
+        if (nextIdx >= deck.cards.length) {
+          autoplayPlaying = false;
+          setPlayBtnIcon(false);
+          showToast('Autoplay complete! ¡Muy bien!');
+        } else {
+          autoplayIndex = nextIdx;
+          autoplayShowCard(autoplayIndex, true);
+        }
+      }, 3000);
+    });
+  }, 2000);
+}
+
+function setPlayBtnIcon(playing) {
+  const icon = document.getElementById('playbtn-icon');
+  if (!icon) return;
+  if (playing) {
+    // pause bars
+    icon.innerHTML = '<rect x="4" y="3" width="5" height="16" rx="1.5" fill="white"/><rect x="13" y="3" width="5" height="16" rx="1.5" fill="white"/>';
+  } else {
+    // play triangle
+    icon.innerHTML = '<polygon points="5,2 19,11 5,20" fill="white"/>';
+  }
+}
+
+function toggleAutoplay() {
+  if (autoplayPlaying) {
+    autoplayPlaying = false;
+    stopAutoplayTimer();
+    setPlayBtnIcon(false);
+  } else {
+    autoplayPlaying = true;
+    setPlayBtnIcon(true);
+    scheduleAutoplay();
+  }
+}
+
+function stopAutoplayTimer() {
+  if (autoplayTimer) { clearTimeout(autoplayTimer); autoplayTimer = null; }
+}
+
+// Prev/Next do NOT pause — they jump and keep playing if currently playing
+function autoplayNext() {
+  const deck = decks.find(d => d.id === autoplayDeckId);
+  if (!deck) return;
+  stopAutoplayTimer();
+  autoplayIndex = Math.min(autoplayIndex + 1, deck.cards.length - 1);
+  autoplayShowCard(autoplayIndex, autoplayPlaying);
+  // Always show the Spanish immediately when navigating
+  setTimeout(() => {
+    const esEl = document.getElementById('autoplay-es-word');
+    if (esEl) esEl.style.opacity = '1';
+  }, 50);
+}
+
+function autoplayPrev() {
+  stopAutoplayTimer();
+  autoplayIndex = Math.max(autoplayIndex - 1, 0);
+  autoplayShowCard(autoplayIndex, autoplayPlaying);
+  setTimeout(() => {
+    const esEl = document.getElementById('autoplay-es-word');
+    if (esEl) esEl.style.opacity = '1';
+  }, 50);
+}
+
+// ── TTS ──
+function speakText(text, lang) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = lang === 'es' ? 'es-ES' : 'en-US';
+  utt.rate = 0.85;
+  const voices = window.speechSynthesis.getVoices();
+  const pref = voices.find(v => v.lang.startsWith(lang === 'es' ? 'es' : 'en') && !v.name.includes('Google'));
+  if (pref) utt.voice = pref;
+  window.speechSynthesis.speak(utt);
+}
+
+function speakTextWithCallback(text, lang, onEnd) {
+  if (!window.speechSynthesis) { onEnd && onEnd(); return; }
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = lang === 'es' ? 'es-ES' : 'en-US';
+  utt.rate = 0.85;
+  const voices = window.speechSynthesis.getVoices();
+  const pref = voices.find(v => v.lang.startsWith(lang === 'es' ? 'es' : 'en') && !v.name.includes('Google'));
+  if (pref) utt.voice = pref;
+  utt.onend = () => { onEnd && onEnd(); };
+  // Fallback: if onend never fires (some browsers), estimate from text length
+  const fallbackMs = Math.max(1500, text.length * 70);
+  const fallback = setTimeout(() => { onEnd && onEnd(); }, fallbackMs + 500);
+  utt.onend = () => { clearTimeout(fallback); onEnd && onEnd(); };
+  window.speechSynthesis.speak(utt);
+}
+function speakSpanishAuto(es) { speakText(es, 'es'); }
+function speakSpanish(e, es) { e.stopPropagation(); speakText(es, 'es'); }
+window.speechSynthesis && window.speechSynthesis.getVoices();
+window.speechSynthesis && (window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices());
+
+// ── MODALS ──
+function openAddDeckModal(id) {
+  editingDeckId = id || null;
+  document.getElementById('modal-deck-title').textContent = id ? 'Edit deck' : 'New deck';
+  document.getElementById('save-deck-btn').textContent = id ? 'Save changes' : 'Create deck';
+  const deck = id ? decks.find(d => d.id === id) : null;
+  document.getElementById('deck-name-input').value = deck ? deck.name : '';
+  openModal('modal-deck');
+  setTimeout(() => document.getElementById('deck-name-input').focus(), 200);
+}
+
+function saveDeck() {
+  const name = document.getElementById('deck-name-input').value.trim();
+  if (!name) { showToast('Please enter a deck name'); return; }
+  if (editingDeckId) {
+    const deck = decks.find(d => d.id === editingDeckId);
+    if (deck) deck.name = name;
+  } else {
+    decks.push({ id: uid(), name, lastStudied: null, cards: [] });
+  }
+  save(); renderHome(); closeModal('modal-deck');
+  showToast(editingDeckId ? 'Deck updated' : 'Deck created!');
+}
+
+function editDeck(id) { openAddDeckModal(id); }
+
+function confirmDeleteDeck(id) {
+  const deck = decks.find(d => d.id === id);
+  if (!deck) return;
+  if (!confirm(`Delete "${deck.name}" and all its cards?`)) return;
+  decks = decks.filter(d => d.id !== id);
+  save(); renderHome(); closeModal('modal-deck-detail');
+  showToast('Deck deleted');
+}
+
+function openAddWordModal(deckId) {
+  document.getElementById('word-en-input').value = '';
+  document.getElementById('word-es-input').value = '';
+  document.getElementById('word-ctx-input').value = '';
+  const sel = document.getElementById('word-deck-select');
+  sel.innerHTML = '';
+  decks.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d.id; opt.textContent = d.name;
+    if (d.id === deckId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  openModal('modal-word');
+  setTimeout(() => document.getElementById('word-en-input').focus(), 200);
+}
+
+function saveWord() {
+  const en = document.getElementById('word-en-input').value.trim();
+  const es = document.getElementById('word-es-input').value.trim();
+  const ctx = document.getElementById('word-ctx-input').value.trim();
+  const deckId = document.getElementById('word-deck-select').value;
+  if (!en || !es) { showToast('Please fill in both English and Spanish'); return; }
+  const deck = decks.find(d => d.id === deckId);
+  if (!deck) return;
+  deck.cards.push({ id: uid(), en, es, ctx });
+  save(); renderHome(); closeModal('modal-word');
+  showToast('Word added!');
+}
+
+function openDeckDetailModal(deckId) {
+  currentDetailDeckId = deckId;
+  const deck = decks.find(d => d.id === deckId);
+  if (!deck) return;
+  document.getElementById('deck-detail-name').textContent = deck.name;
+  document.getElementById('deck-detail-count').textContent = `${deck.cards.length} words`;
+  renderDetailWordList(deck);
+  openModal('modal-deck-detail');
+}
+
+function renderDetailWordList(deck) {
+  const list = document.getElementById('detail-word-list');
+  if (!deck.cards.length) {
+    list.innerHTML = '<p style="color:var(--ink-2);font-size:14px;text-align:center;padding:20px">No words yet. Add some!</p>';
+    return;
+  }
+  list.innerHTML = '';
+  deck.cards.forEach(card => {
+    const row = document.createElement('div');
+    row.className = 'word-item';
+    row.innerHTML = `
+      <span class="word-en">${esc(card.en)}</span>
+      <span class="word-es">${esc(card.es)}</span>
+      <button class="word-delete" onclick="deleteWord('${deck.id}','${card.id}')">✕</button>
+    `;
+    list.appendChild(row);
+  });
+}
+
+function deleteWord(deckId, cardId) {
+  const deck = decks.find(d => d.id === deckId);
+  if (!deck) return;
+  deck.cards = deck.cards.filter(c => c.id !== cardId);
+  save(); renderHome(); renderDetailWordList(deck);
+  document.getElementById('deck-detail-count').textContent = `${deck.cards.length} words`;
+  showToast('Word removed');
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+});
+
+// ── UTILS ──
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function openSyncModal() {
+  document.getElementById('sync-url-input').value = scriptUrl;
+  openModal('modal-sync');
+  setTimeout(() => document.getElementById('sync-url-input').focus(), 200);
+}
+
+function saveScriptUrl() {
+  const url = document.getElementById('sync-url-input').value.trim();
+  if (!url) { showToast('Please paste your Apps Script URL'); return; }
+  scriptUrl = url;
+  localStorage.setItem('tarjetas-script-url', url);
+  closeModal('modal-sync');
+  showToast('Connecting…');
+  syncFromSheet().then(() => renderHome());
+}
+
+function disconnectSheet() {
+  if (!confirm('Disconnect Google Sheet? Your local data stays, but changes won\'t sync.')) return;
+  scriptUrl = '';
+  localStorage.removeItem('tarjetas-script-url');
+  closeModal('modal-sync');
+  setSyncStatus('idle');
+  renderHome();
+  showToast('Disconnected');
+}
+
+function handleSyncTap() {
+  if (!scriptUrl) { openSyncModal(); return; }
+  if (syncStatus === 'error') { syncFromSheet(); return; }
+  syncFromSheet();
+}
+
+// ── INIT ──
+load();
+renderHome();
+if (scriptUrl) {
+  setSyncStatus('idle');
+  syncFromSheet();
+}
+</script>
+</body>
+</html>
