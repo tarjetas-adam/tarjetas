@@ -1467,14 +1467,13 @@ function stopAutoplayTimer() {
   if (autoplayTimer) { clearTimeout(autoplayTimer); autoplayTimer = null; }
 }
 
-// Prev/Next do NOT pause — they jump and keep playing if currently playing
 function autoplayNext() {
   const deck = decks.find(d => d.id === autoplayDeckId);
   if (!deck) return;
   stopAutoplayTimer();
+  window.speechSynthesis && window.speechSynthesis.cancel();
   autoplayIndex = Math.min(autoplayIndex + 1, deck.cards.length - 1);
   autoplayShowCard(autoplayIndex, autoplayPlaying);
-  // Always show the Spanish immediately when navigating
   setTimeout(() => {
     const esEl = document.getElementById('autoplay-es-word');
     if (esEl) esEl.style.opacity = '1';
@@ -1483,8 +1482,12 @@ function autoplayNext() {
 
 function autoplayPrev() {
   stopAutoplayTimer();
+  window.speechSynthesis && window.speechSynthesis.cancel();
+  // Pause when going back
+  autoplayPlaying = false;
+  setPlayBtnIcon(false);
   autoplayIndex = Math.max(autoplayIndex - 1, 0);
-  autoplayShowCard(autoplayIndex, autoplayPlaying);
+  autoplayShowCard(autoplayIndex, false);
   setTimeout(() => {
     const esEl = document.getElementById('autoplay-es-word');
     if (esEl) esEl.style.opacity = '1';
@@ -1502,6 +1505,13 @@ function speakText(text, lang) {
   const pref = voices.find(v => v.lang.startsWith(lang === 'es' ? 'es' : 'en') && !v.name.includes('Google'));
   if (pref) utt.voice = pref;
   window.speechSynthesis.speak(utt);
+  // Mobile Safari keepalive: resume every 10s to prevent cutting off
+  const keepAlive = setInterval(() => {
+    if (!window.speechSynthesis.speaking) { clearInterval(keepAlive); return; }
+    window.speechSynthesis.pause();
+    window.speechSynthesis.resume();
+  }, 10000);
+  utt.onend = () => clearInterval(keepAlive);
 }
 
 function speakTextWithCallback(text, lang, onEnd) {
@@ -1513,11 +1523,16 @@ function speakTextWithCallback(text, lang, onEnd) {
   const voices = window.speechSynthesis.getVoices();
   const pref = voices.find(v => v.lang.startsWith(lang === 'es' ? 'es' : 'en') && !v.name.includes('Google'));
   if (pref) utt.voice = pref;
-  utt.onend = () => { onEnd && onEnd(); };
-  // Fallback: if onend never fires (some browsers), estimate from text length
-  const fallbackMs = Math.max(1500, text.length * 70);
-  const fallback = setTimeout(() => { onEnd && onEnd(); }, fallbackMs + 500);
-  utt.onend = () => { clearTimeout(fallback); onEnd && onEnd(); };
+  // Fallback timer based on text length in case onend never fires
+  const fallbackMs = Math.max(2000, text.length * 80);
+  const fallback = setTimeout(() => { clearInterval(keepAlive); onEnd && onEnd(); }, fallbackMs + 800);
+  // Mobile Safari keepalive
+  const keepAlive = setInterval(() => {
+    if (!window.speechSynthesis.speaking) { clearInterval(keepAlive); return; }
+    window.speechSynthesis.pause();
+    window.speechSynthesis.resume();
+  }, 10000);
+  utt.onend = () => { clearTimeout(fallback); clearInterval(keepAlive); onEnd && onEnd(); };
   window.speechSynthesis.speak(utt);
 }
 function speakSpanishAuto(es) { speakText(es, 'es'); }
