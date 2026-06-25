@@ -400,14 +400,13 @@
     border-radius: var(--radius);
     width: 100%;
     max-width: 360px;
-    padding: 36px 28px;
+    padding: 24px 28px;
     text-align: center;
-    min-height: 200px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: 8px;
   }
 
   .autoplay-lang-label {
@@ -420,31 +419,37 @@
 
   .autoplay-word {
     font-family: 'DM Serif Display', serif;
-    font-size: 28px;
+    font-size: 22px;
     color: #fff;
-    line-height: 1.25;
-    letter-spacing: -0.3px;
+    line-height: 1.3;
+    letter-spacing: -0.2px;
+    height: calc(22px * 1.3 * 2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
   }
 
   .autoplay-divider {
     width: 32px;
     height: 1px;
     background: rgba(255,255,255,0.15);
-    margin: 4px 0;
+    margin: 2px 0;
   }
 
   .autoplay-spanish {
     font-family: 'DM Serif Display', serif;
-    font-size: 28px;
+    font-size: 22px;
     color: var(--accent);
     font-style: italic;
-    line-height: 1.25;
+    line-height: 1.3;
     transition: opacity 0.5s ease;
-    min-height: 36px;
+    height: calc(22px * 1.3 * 2);
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
+    overflow: hidden;
   }
 
   .autoplay-progress { width: 100%; max-width: 360px; }
@@ -548,24 +553,16 @@
   .word-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 0;
+    gap: 10px;
+    padding: 11px 0 11px 12px;
     border-bottom: 1px solid var(--border);
+    transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+    user-select: none;
   }
   .word-item:last-child { border-bottom: none; }
-  .word-en { flex: 1; font-size: 14px; font-weight: 500; }
-  .word-es { flex: 1; font-size: 14px; color: var(--accent); font-style: italic; }
-  .word-delete {
-    background: none;
-    border: none;
-    color: var(--ink-3);
-    cursor: pointer;
-    font-size: 15px;
-    padding: 4px;
-    border-radius: 4px;
-    transition: color 0.15s;
-  }
-  .word-delete:hover { color: var(--red); }
+  .word-item.dragging { opacity: 0.4; }
+  .word-en { flex: 1; font-size: 14px; font-weight: 500; min-width: 0; }
+  .word-es { flex: 1; font-size: 14px; color: var(--accent); font-style: italic; min-width: 0; }
 
   #deck-detail-name { font-family: 'DM Serif Display', serif; font-size: 22px; margin-bottom: 4px; letter-spacing: -0.3px; }
   #deck-detail-count { color: var(--ink-2); font-size: 13px; margin-bottom: 20px; }
@@ -665,12 +662,23 @@
   <div class="modal">
     <h2 id="modal-deck-title">New deck</h2>
     <div class="form-group">
-      <label>Deck name</label>
-      <input type="text" id="deck-name-input" placeholder="e.g. Food &amp; Drinks" />
+      <label>Deck name <span id="deck-name-counter" style="font-weight:400;color:var(--ink-3);float:right">0/22</span></label>
+      <input type="text" id="deck-name-input" placeholder="e.g. Food &amp; Drinks" maxlength="22" oninput="document.getElementById('deck-name-counter').textContent=this.value.length+'/22'" />
     </div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeModal('modal-deck')">Cancel</button>
       <button class="btn-primary" id="save-deck-btn" onclick="saveDeck()">Create deck</button>
+    </div>
+    <!-- Edit-only section: word list + delete deck -->
+    <div id="edit-deck-words-section" style="display:none;margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span style="font-size:13px;font-weight:600;color:var(--ink-2);text-transform:uppercase;letter-spacing:0.8px">Words</span>
+        <button onclick="openAddWordModal(editingDeckId)" style="background:none;border:none;font-size:13px;color:var(--accent);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">＋ Add word</button>
+      </div>
+      <div class="word-list" id="edit-deck-word-list"></div>
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+        <button onclick="confirmDeleteDeck(editingDeckId)" style="background:none;border:none;color:var(--red);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;">Delete this deck</button>
+      </div>
     </div>
   </div>
 </div>
@@ -709,10 +717,44 @@
     <div id="deck-detail-count"></div>
     <div class="modal-actions" style="margin-top:0;margin-bottom:20px">
       <button class="btn-primary" onclick="openAddWordModal(currentDetailDeckId); closeModal('modal-deck-detail')">＋ Add word</button>
-      <button class="btn-secondary" onclick="editDeck(currentDetailDeckId); closeModal('modal-deck-detail')">Edit deck</button>
-      <button class="btn-secondary" style="color:var(--red)" onclick="confirmDeleteDeck(currentDetailDeckId)">Delete</button>
+      <button class="btn-secondary" onclick="openEditDeckModal(currentDetailDeckId); closeModal('modal-deck-detail')">Edit deck</button>
     </div>
     <div class="word-list" id="detail-word-list"></div>
+  </div>
+</div>
+
+<!-- MODAL: Edit Word -->
+<div class="modal-overlay" id="modal-edit-word">
+  <div class="modal">
+    <h2>Edit word</h2>
+    <div class="form-group">
+      <label>English</label>
+      <input type="text" id="edit-word-en-input" />
+    </div>
+    <div class="form-group">
+      <label>Spanish</label>
+      <input type="text" id="edit-word-es-input" />
+    </div>
+    <div class="form-group">
+      <label>Context / example (optional)</label>
+      <input type="text" id="edit-word-ctx-input" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('modal-edit-word')">Cancel</button>
+      <button class="btn-primary" onclick="saveEditWord()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Confirm -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal" style="padding-bottom:28px">
+    <h2 id="confirm-title" style="font-size:18px;margin-bottom:10px"></h2>
+    <p id="confirm-msg" style="color:var(--ink-2);font-size:14px;line-height:1.5;margin-bottom:20px"></p>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('modal-confirm')" style="border-radius:var(--radius-sm);padding:13px 20px;">Cancel</button>
+      <button class="btn-primary" id="confirm-ok-btn" style="border-radius:var(--radius-sm);background:var(--red);">Delete</button>
+    </div>
   </div>
 </div>
 
@@ -912,7 +954,7 @@ function renderHome() {
           </div>
           <div class="deck-actions">
             <button class="btn-primary" data-action="study">Study</button>
-            <button class="btn-secondary" data-action="autoplay">▶</button>
+            <button class="btn-secondary" data-action="autoplay" style="padding:8px 12px;">▶</button>
           </div>
         </div>
       </div>
@@ -1061,13 +1103,19 @@ function attachDeckCardBehavior(div, deckId) {
   div.addEventListener('mouseleave', cancelLong);
 
   // ── Touch long-press ──
+  let liveTouchY = 0;
   div.addEventListener('touchstart', e => {
     if (e.target.closest('button')) return;
     startY = e.touches[0].clientY;
+    liveTouchY = e.touches[0].clientY;
     longPressTimer = setTimeout(() => {
-      beginDrag(e.touches[0].clientY);
+      beginDrag(liveTouchY);
 
-      const onMove = e => { e.preventDefault(); moveDrag(e.touches[0].clientY); };
+      const onMove = e => {
+        e.preventDefault();
+        liveTouchY = e.touches[0].clientY;
+        moveDrag(liveTouchY);
+      };
       const onEnd = e => {
         endDrag(e.changedTouches[0].clientY);
         document.removeEventListener('touchmove', onMove);
@@ -1077,11 +1125,15 @@ function attachDeckCardBehavior(div, deckId) {
       document.addEventListener('touchend', onEnd);
     }, 500);
   }, { passive: true });
-  div.addEventListener('touchend', cancelLong);
+
   div.addEventListener('touchmove', e => {
-    // Cancel long press if user scrolls
-    if (Math.abs(e.touches[0].clientY - startY) > 8) cancelLong();
+    liveTouchY = e.touches[0].clientY;
+    // Cancel long press only if scrolling significantly
+    if (Math.abs(e.touches[0].clientY - startY) > 12) cancelLong();
   }, { passive: true });
+
+  div.addEventListener('touchend', cancelLong);
+  div.addEventListener('touchcancel', cancelLong);
 
   // ── Short tap → open detail ──
   div.addEventListener('click', e => {
@@ -1107,7 +1159,7 @@ function startStudy(deckId) {
   save();
 
   currentDeckId = deckId;
-  studyQueue = shuffle([...deck.cards]);
+  studyQueue = [...deck.cards];
   missedCards = [];
   roundKnown = 0;
   totalCards = studyQueue.length;
@@ -1480,6 +1532,8 @@ function openAddDeckModal(id) {
   document.getElementById('save-deck-btn').textContent = id ? 'Save changes' : 'Create deck';
   const deck = id ? decks.find(d => d.id === id) : null;
   document.getElementById('deck-name-input').value = deck ? deck.name : '';
+  document.getElementById('deck-name-counter').textContent = (deck ? deck.name.length : 0) + '/22';
+  document.getElementById('edit-deck-words-section').style.display = 'none';
   openModal('modal-deck');
   setTimeout(() => document.getElementById('deck-name-input').focus(), 200);
 }
@@ -1497,15 +1551,55 @@ function saveDeck() {
   showToast(editingDeckId ? 'Deck updated' : 'Deck created!');
 }
 
+function showConfirm(title, msg, onOk) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-msg').textContent = msg;
+  const btn = document.getElementById('confirm-ok-btn');
+  const newBtn = btn.cloneNode(true); // remove old listeners
+  btn.parentNode.replaceChild(newBtn, btn);
+  newBtn.addEventListener('click', () => { closeModal('modal-confirm'); onOk(); });
+  openModal('modal-confirm');
+}
+
+function confirmDeleteWord(deckId, cardId) {
+  const deck = decks.find(d => d.id === deckId);
+  const card = deck && deck.cards.find(c => c.id === cardId);
+  if (!card) return;
+  showConfirm(
+    'Remove word?',
+    `"${card.en}" will be permanently removed from this deck.`,
+    () => deleteWord(deckId, cardId)
+  );
+}
+
+function openEditDeckModal(deckId) {
+  editingDeckId = deckId;
+  const deck = decks.find(d => d.id === deckId);
+  if (!deck) return;
+  document.getElementById('modal-deck-title').textContent = 'Edit deck';
+  document.getElementById('save-deck-btn').textContent = 'Save changes';
+  document.getElementById('deck-name-input').value = deck.name;
+  document.getElementById('deck-name-counter').textContent = deck.name.length + '/22';
+  document.getElementById('edit-deck-words-section').style.display = 'block';
+  renderEditDeckWordList(deck);
+  openModal('modal-deck');
+  setTimeout(() => document.getElementById('deck-name-input').focus(), 200);
+}
+
 function editDeck(id) { openAddDeckModal(id); }
 
 function confirmDeleteDeck(id) {
   const deck = decks.find(d => d.id === id);
   if (!deck) return;
-  if (!confirm(`Delete "${deck.name}" and all its cards?`)) return;
-  decks = decks.filter(d => d.id !== id);
-  save(); renderHome(); closeModal('modal-deck-detail');
-  showToast('Deck deleted');
+  showConfirm(
+    `Delete "${deck.name}"?`,
+    `This will permanently delete the deck and all ${deck.cards.length} word${deck.cards.length !== 1 ? 's' : ''} in it.`,
+    () => {
+      decks = decks.filter(d => d.id !== id);
+      save(); renderHome(); closeModal('modal-deck-detail'); closeModal('modal-deck');
+      showToast('Deck deleted');
+    }
+  );
 }
 
 function openAddWordModal(deckId) {
@@ -1547,6 +1641,9 @@ function openDeckDetailModal(deckId) {
   openModal('modal-deck-detail');
 }
 
+let editingWordDeckId = null;
+let editingWordId = null;
+
 function renderDetailWordList(deck) {
   const list = document.getElementById('detail-word-list');
   if (!deck.cards.length) {
@@ -1557,21 +1654,201 @@ function renderDetailWordList(deck) {
   deck.cards.forEach(card => {
     const row = document.createElement('div');
     row.className = 'word-item';
+    row.dataset.id = card.id;
+    row.style.cursor = 'grab';
     row.innerHTML = `
       <span class="word-en">${esc(card.en)}</span>
       <span class="word-es">${esc(card.es)}</span>
-      <button class="word-delete" onclick="deleteWord('${deck.id}','${card.id}')">✕</button>
     `;
+    attachWordDrag(row, deck.id);
     list.appendChild(row);
   });
+}
+
+function renderEditDeckWordList(deck) {
+  const list = document.getElementById('edit-deck-word-list');
+  if (!list) return;
+  if (!deck.cards.length) {
+    list.innerHTML = '<p style="color:var(--ink-2);font-size:13px;text-align:center;padding:12px 0">No words yet.</p>';
+    return;
+  }
+  list.innerHTML = '';
+  deck.cards.forEach(card => {
+    const row = document.createElement('div');
+    row.className = 'word-item';
+    row.dataset.id = card.id;
+    row.innerHTML = `
+      <span class="word-en" style="flex:1">${esc(card.en)}</span>
+      <span class="word-es" style="flex:1">${esc(card.es)}</span>
+      <button style="background:none;border:none;color:var(--ink-3);cursor:pointer;font-size:13px;padding:4px 6px;border-radius:4px;font-family:'DM Sans',sans-serif;" data-edit="${card.id}">✎</button>
+      <button style="background:none;border:none;color:var(--ink-3);cursor:pointer;font-size:14px;padding:4px;" data-del="${card.id}">✕</button>
+    `;
+    row.querySelector('[data-edit]').addEventListener('click', e => {
+      e.stopPropagation();
+      openEditWordModal(deck.id, card.id);
+    });
+    row.querySelector('[data-del]').addEventListener('click', e => {
+      e.stopPropagation();
+      confirmDeleteWord(deck.id, card.id);
+    });
+    list.appendChild(row);
+  });
+}
+
+function attachWordDrag(row, deckId) {
+  let longPressTimer = null;
+  let dragging = false;
+  let ghost = null;
+  let ghostOffsetY = 0;
+  let dragCardH = 0;
+  let currentTargetId = null;
+  let startY = 0;
+  let liveTouchY = 0;
+
+  const cancelLong = () => clearTimeout(longPressTimer);
+
+  const beginDrag = (clientY) => {
+    dragging = true;
+    dragCardH = row.getBoundingClientRect().height;
+    row.classList.add('dragging');
+    const rect = row.getBoundingClientRect();
+    ghostOffsetY = clientY - rect.top;
+    ghost = row.cloneNode(true);
+    ghost.style.cssText = `position:fixed;left:${rect.left - 16}px;width:${rect.width}px;top:${clientY - ghostOffsetY}px;z-index:999;opacity:0.85;pointer-events:none;background:var(--surface);border:1.5px solid var(--accent);border-radius:8px;padding:11px 0 11px 12px;display:flex;align-items:center;gap:10px;`;
+    document.body.appendChild(ghost);
+  };
+
+  const moveDrag = (clientY) => {
+    if (!dragging) return;
+    ghost.style.top = (clientY - ghostOffsetY) + 'px';
+    const list = document.getElementById('detail-word-list');
+    const deck = decks.find(d => d.id === deckId);
+    const fromIdx = deck.cards.findIndex(c => c.id === row.dataset.id);
+    const rows = [...list.querySelectorAll('.word-item:not(.dragging)')];
+    let target = null;
+    for (const r of rows) {
+      const rect = r.getBoundingClientRect();
+      if (clientY < rect.top + rect.height / 2) { target = r; break; }
+    }
+    const targetId = target ? target.dataset.id : '__end__';
+    if (targetId === currentTargetId) return;
+    currentTargetId = targetId;
+    const toIdx = target ? deck.cards.findIndex(c => c.id === target.dataset.id) : deck.cards.length;
+    rows.forEach(r => {
+      const rIdx = deck.cards.findIndex(c => c.id === r.dataset.id);
+      let shift = 0;
+      if (fromIdx < toIdx && rIdx > fromIdx && rIdx < toIdx) shift = -dragCardH;
+      else if (fromIdx > toIdx && rIdx >= toIdx && rIdx < fromIdx) shift = dragCardH;
+      r.style.transition = 'transform 0.28s cubic-bezier(0.4,0,0.2,1)';
+      r.style.transform = shift ? `translateY(${shift}px)` : '';
+    });
+  };
+
+  const endDrag = (clientY) => {
+    if (!dragging) return;
+    dragging = false;
+    currentTargetId = null;
+    row.classList.remove('dragging');
+    if (ghost) { ghost.remove(); ghost = null; }
+    const list = document.getElementById('detail-word-list');
+    [...list.querySelectorAll('.word-item')].forEach(r => { r.style.transition = 'none'; r.style.transform = ''; });
+    const rows = [...list.querySelectorAll('.word-item:not(.dragging)')];
+    let target = null;
+    for (const r of rows) {
+      const rect = r.getBoundingClientRect();
+      if (clientY < rect.top + rect.height / 2) { target = r; break; }
+    }
+    const deck = decks.find(d => d.id === deckId);
+    const fromIdx = deck.cards.findIndex(c => c.id === row.dataset.id);
+    if (target) {
+      const toIdx = deck.cards.findIndex(c => c.id === target.dataset.id);
+      if (toIdx !== -1 && fromIdx !== toIdx) {
+        const [moved] = deck.cards.splice(fromIdx, 1);
+        deck.cards.splice(toIdx, 0, moved);
+        save(); renderDetailWordList(deck);
+      }
+    } else if (fromIdx !== deck.cards.length - 1) {
+      const [moved] = deck.cards.splice(fromIdx, 1);
+      deck.cards.push(moved);
+      save(); renderDetailWordList(deck);
+    }
+    setTimeout(() => { dragging = false; }, 0);
+  };
+
+  // Mouse long-press on whole row
+  row.addEventListener('mousedown', e => {
+    if (e.target.closest('button')) return;
+    startY = e.clientY;
+    longPressTimer = setTimeout(() => {
+      beginDrag(e.clientY);
+      const onMove = e => moveDrag(e.clientY);
+      const onUp = e => { endDrag(e.clientY); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    }, 500);
+  });
+  row.addEventListener('mouseup', cancelLong);
+  row.addEventListener('mouseleave', cancelLong);
+
+  // Touch long-press on whole row
+  row.addEventListener('touchstart', e => {
+    if (e.target.closest('button')) return;
+    startY = e.touches[0].clientY;
+    liveTouchY = startY;
+    longPressTimer = setTimeout(() => {
+      beginDrag(liveTouchY);
+      const onMove = e => { e.preventDefault(); liveTouchY = e.touches[0].clientY; moveDrag(liveTouchY); };
+      const onEnd = e => { endDrag(e.changedTouches[0].clientY); document.removeEventListener('touchmove', onMove); document.removeEventListener('touchend', onEnd); };
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend', onEnd);
+    }, 500);
+  }, { passive: true });
+  row.addEventListener('touchmove', e => {
+    liveTouchY = e.touches[0].clientY;
+    if (Math.abs(liveTouchY - startY) > 12) cancelLong();
+  }, { passive: true });
+  row.addEventListener('touchend', cancelLong);
+  row.addEventListener('touchcancel', cancelLong);
+}
+
+function openEditWordModal(deckId, cardId) {
+  const deck = decks.find(d => d.id === deckId);
+  const card = deck && deck.cards.find(c => c.id === cardId);
+  if (!card) return;
+  editingWordDeckId = deckId;
+  editingWordId = cardId;
+  document.getElementById('edit-word-en-input').value = card.en;
+  document.getElementById('edit-word-es-input').value = card.es;
+  document.getElementById('edit-word-ctx-input').value = card.ctx || '';
+  openModal('modal-edit-word');
+  setTimeout(() => document.getElementById('edit-word-en-input').focus(), 200);
+}
+
+function saveEditWord() {
+  const en = document.getElementById('edit-word-en-input').value.trim();
+  const es = document.getElementById('edit-word-es-input').value.trim();
+  const ctx = document.getElementById('edit-word-ctx-input').value.trim();
+  if (!en || !es) { showToast('Please fill in both fields'); return; }
+  const deck = decks.find(d => d.id === editingWordDeckId);
+  const card = deck && deck.cards.find(c => c.id === editingWordId);
+  if (!card) return;
+  card.en = en; card.es = es; card.ctx = ctx;
+  save(); renderHome();
+  const updatedDeck = decks.find(d => d.id === editingWordDeckId);
+  if (updatedDeck) { renderDetailWordList(updatedDeck); renderEditDeckWordList(updatedDeck); }
+  closeModal('modal-edit-word');
+  showToast('Word updated!');
 }
 
 function deleteWord(deckId, cardId) {
   const deck = decks.find(d => d.id === deckId);
   if (!deck) return;
   deck.cards = deck.cards.filter(c => c.id !== cardId);
-  save(); renderHome(); renderDetailWordList(deck);
-  document.getElementById('deck-detail-count').textContent = `${deck.cards.length} words`;
+  save(); renderHome();
+  renderDetailWordList(deck);
+  renderEditDeckWordList(deck);
+  const countEl = document.getElementById('deck-detail-count');
+  if (countEl) countEl.textContent = `${deck.cards.length} words`;
   showToast('Word removed');
 }
 
