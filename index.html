@@ -604,7 +604,11 @@
 <!-- STUDY -->
 <div id="study" class="screen">
   <div class="study-header">
-    <button class="btn-icon" onclick="exitStudy()">←</button>
+    <button class="btn-icon" onclick="exitStudy()">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <polyline points="13,4 7,10 13,16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
     <div class="study-header-center">
       <div class="study-deck-name" id="study-deck-name"></div>
       <div class="study-counter" id="study-counter"></div>
@@ -613,7 +617,7 @@
   </div>
   <div class="study-progress-bar"><div class="study-progress-fill" id="study-progress-fill"></div></div>
   <div class="card-area" id="card-area"></div>
-  <div class="study-actions" id="study-actions">
+  <div class="study-actions" id="study-actions" style="display:none">
     <button class="action-btn wrong" onclick="swipeCard('left')" title="Didn't know it">✕</button>
     <button class="action-btn neutral" onclick="flipCard()" title="Flip">↻</button>
     <button class="action-btn right" onclick="swipeCard('right')" title="Knew it">✓</button>
@@ -623,7 +627,11 @@
 <!-- AUTOPLAY -->
 <div id="autoplay" class="screen">
   <div class="autoplay-header">
-    <button class="btn-icon" onclick="exitAutoplay()">←</button>
+    <button class="btn-icon" onclick="exitAutoplay()">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <polyline points="13,4 7,10 13,16" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
     <div class="autoplay-title" id="autoplay-deck-name" style="text-align:center;flex:1"></div>
     <div style="width:32px"></div>
   </div>
@@ -644,7 +652,7 @@
     <div class="autoplay-controls">
       <button class="ctrl-btn" onclick="autoplayPrev()" title="Previous">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <rect x="5" y="8" width="2.5" height="8" rx="1.25" fill="white"/>
+          <rect x="5" y="5" width="2.5" height="14" rx="1.25" fill="white"/>
           <polygon points="19,5 8,12 19,19" fill="white"/>
         </svg>
       </button>
@@ -657,7 +665,7 @@
       <button class="ctrl-btn" onclick="autoplayNext()" title="Next">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
           <polygon points="5,5 16,12 5,19" fill="white"/>
-          <rect x="16.5" y="8" width="2.5" height="8" rx="1.25" fill="white"/>
+          <rect x="16.5" y="5" width="2.5" height="14" rx="1.25" fill="white"/>
         </svg>
       </button>
     </div>
@@ -1204,7 +1212,7 @@ function startStudy(deckId) {
 
   showScreen('study');
   document.getElementById('study-deck-name').textContent = deck.name;
-  document.getElementById('study-actions').style.display = '';
+  // study-actions hidden
   renderStudyCard();
 }
 
@@ -1220,10 +1228,6 @@ function renderStudyCard() {
   isFlipped = false;
   updateStudyCounter();
   area.innerHTML = `
-    <div class="swipe-hint">
-      <span>← Didn't know</span>
-      <span>Knew it →</span>
-    </div>
     <div class="flashcard-wrapper">
       <div class="flashcard" id="flashcard">
         <div class="card-face card-front" id="card-front">
@@ -1250,10 +1254,9 @@ function renderStudyCard() {
 }
 
 function updateStudyCounter() {
-  // Show progress across the whole session: known / total
-  const done = roundKnown;
+  const done = currentCardIndex;
   const total = totalCards;
-  document.getElementById('study-counter').textContent = `${done} / ${total} known`;
+  document.getElementById('study-counter').textContent = `${roundKnown} / ${total}`;
   document.getElementById('study-progress-fill').style.width = (total ? done/total*100 : 0) + '%';
 }
 
@@ -1285,7 +1288,7 @@ function swipeCard(dir) {
 
 function showRoundComplete() {
   const area = document.getElementById('card-area');
-  document.getElementById('study-actions').style.display = 'none';
+  // study-actions hidden
   document.getElementById('study-progress-fill').style.width = (totalCards ? roundKnown/totalCards*100 : 100) + '%';
 
   if (missedCards.length === 0) {
@@ -1322,7 +1325,7 @@ function nextRound() {
   studyQueue = shuffle([...missedCards]);
   missedCards = [];
   currentCardIndex = 0;
-  document.getElementById('study-actions').style.display = '';
+  // study-actions hidden
   renderStudyCard();
 }
 
