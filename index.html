@@ -624,7 +624,8 @@
 <div id="autoplay" class="screen">
   <div class="autoplay-header">
     <button class="btn-icon" onclick="exitAutoplay()">←</button>
-    <div class="autoplay-title" id="autoplay-deck-name"></div>
+    <div class="autoplay-title" id="autoplay-deck-name" style="text-align:center;flex:1"></div>
+    <div style="width:32px"></div>
   </div>
   <div class="autoplay-body">
     <div class="autoplay-card">
@@ -643,7 +644,7 @@
     <div class="autoplay-controls">
       <button class="ctrl-btn" onclick="autoplayPrev()" title="Previous">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <rect x="5" y="5" width="2.5" height="14" rx="1.25" fill="white"/>
+          <rect x="5" y="8" width="2.5" height="8" rx="1.25" fill="white"/>
           <polygon points="19,5 8,12 19,19" fill="white"/>
         </svg>
       </button>
@@ -656,7 +657,7 @@
       <button class="ctrl-btn" onclick="autoplayNext()" title="Next">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
           <polygon points="5,5 16,12 5,19" fill="white"/>
-          <rect x="16.5" y="5" width="2.5" height="14" rx="1.25" fill="white"/>
+          <rect x="16.5" y="8" width="2.5" height="8" rx="1.25" fill="white"/>
         </svg>
       </button>
     </div>
@@ -980,8 +981,8 @@ function renderHome() {
             <div class="deck-meta">${deck.cards.length} word${deck.cards.length !== 1 ? 's' : ''}</div>
           </div>
           <div class="deck-actions">
-            <button class="btn-primary" data-action="study">Study</button>
             <button class="btn-secondary" data-action="autoplay" style="padding:8px 12px;">▶</button>
+            <button class="btn-primary" data-action="study">Study</button>
           </div>
         </div>
       </div>
