@@ -687,8 +687,8 @@
     <!-- Edit-only section: word list + delete deck -->
     <div id="edit-deck-words-section" style="display:none;margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <span style="font-size:13px;font-weight:600;color:var(--ink-2);text-transform:uppercase;letter-spacing:0.8px">Words</span>
-        <button onclick="openAddWordModal(editingDeckId)" style="background:none;border:none;font-size:13px;color:var(--accent);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">＋ Add word</button>
+        <span style="font-size:13px;font-weight:600;color:var(--ink-2);text-transform:uppercase;letter-spacing:0.8px">Cards</span>
+        <button onclick="openAddWordModal(editingDeckId)" style="background:none;border:none;font-size:13px;color:var(--accent);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">＋ Add card</button>
       </div>
       <div class="word-list" id="edit-deck-word-list"></div>
       <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
@@ -701,7 +701,7 @@
 <!-- MODAL: Add Word -->
 <div class="modal-overlay" id="modal-word">
   <div class="modal">
-    <h2>Add a word</h2>
+    <h2>Add a card</h2>
     <div class="form-group">
       <label>English</label>
       <input type="text" id="word-en-input" placeholder="e.g. hello" />
@@ -731,7 +731,7 @@
     <div id="deck-detail-name"></div>
     <div id="deck-detail-count"></div>
     <div class="modal-actions" style="margin-top:0;margin-bottom:20px">
-      <button class="btn-primary" onclick="openAddWordModal(currentDetailDeckId); closeModal('modal-deck-detail')">＋ Add word</button>
+      <button class="btn-primary" onclick="openAddWordModal(currentDetailDeckId); closeModal('modal-deck-detail')">＋ Add card</button>
       <button class="btn-secondary" onclick="openEditDeckModal(currentDetailDeckId); closeModal('modal-deck-detail')">Edit deck</button>
     </div>
     <div class="word-list" id="detail-word-list"></div>
@@ -741,7 +741,7 @@
 <!-- MODAL: Edit Word -->
 <div class="modal-overlay" id="modal-edit-word">
   <div class="modal">
-    <h2>Edit word</h2>
+    <h2>Edit card</h2>
     <div class="form-group">
       <label>English</label>
       <input type="text" id="edit-word-en-input" />
@@ -986,7 +986,7 @@ function renderHome() {
         <div class="deck-card-row">
           <div class="deck-card-text">
             <h3>${esc(deck.name)}</h3>
-            <div class="deck-meta">${deck.cards.length} word${deck.cards.length !== 1 ? 's' : ''}</div>
+            <div class="deck-meta">${deck.cards.length} card${deck.cards.length !== 1 ? 's' : ''}</div>
           </div>
           <div class="deck-actions">
             <button class="btn-secondary" data-action="autoplay" style="padding:8px 12px;">▶</button>
@@ -1255,8 +1255,8 @@ function renderStudyCard() {
 
 function updateStudyCounter() {
   const done = currentCardIndex;
-  const total = totalCards;
-  document.getElementById('study-counter').textContent = `${roundKnown} / ${total}`;
+  const total = studyQueue.length;
+  document.getElementById('study-counter').textContent = `${done + 1} / ${total}`;
   document.getElementById('study-progress-fill').style.width = (total ? done/total*100 : 0) + '%';
 }
 
@@ -1322,8 +1322,12 @@ function showRoundComplete() {
 }
 
 function nextRound() {
-  studyQueue = shuffle([...missedCards]);
+  // Keep missed cards in original deck order
+  const deck = decks.find(d => d.id === currentDeckId);
+  const deckOrder = deck ? deck.cards.map(c => c.id) : [];
+  studyQueue = [...missedCards].sort((a, b) => deckOrder.indexOf(a.id) - deckOrder.indexOf(b.id));
   missedCards = [];
+  roundKnown = 0;
   currentCardIndex = 0;
   // study-actions hidden
   renderStudyCard();
@@ -1459,20 +1463,27 @@ function autoplayShowCard(idx, andSchedule) {
   const total = deck.cards.length;
   document.getElementById('autoplay-counter').textContent = `${idx+1} / ${total}`;
   document.getElementById('autoplay-progress-fill').style.width = ((idx+1)/total*100) + '%';
-  setTimeout(() => speakText(card.en, 'en'), autoplayIndex === 0 && andSchedule ? 500 : 0);
-  if (andSchedule) scheduleAutoplay();
+
+  if (andSchedule) {
+    const delay = (autoplayIndex === 0) ? 500 : 0;
+    setTimeout(() => {
+      // Speak English first, then schedule Spanish after it finishes
+      speakTextWithCallback(card.en, 'en', () => {
+        scheduleAutoplay();
+      });
+    }, delay);
+  }
 }
 
 function scheduleAutoplay() {
   stopAutoplayTimer();
-  // Wait 2s after English is spoken, then reveal + speak Spanish
+  // Wait 2s after English finishes, then reveal + speak Spanish
   autoplayTimer = setTimeout(() => {
     const deck = decks.find(d => d.id === autoplayDeckId);
     if (!deck || !autoplayPlaying) return;
     const card = deck.cards[autoplayIndex];
     const esEl = document.getElementById('autoplay-es-word');
     if (esEl) esEl.style.opacity = '1';
-    // Speak Spanish and measure how long it takes, then wait 3s after it ends
     speakTextWithCallback(card.es, 'es', () => {
       // 3s after Spanish finishes → next card
       autoplayTimer = setTimeout(() => {
@@ -1481,9 +1492,11 @@ function scheduleAutoplay() {
         if (nextIdx >= deck.cards.length) {
           autoplayPlaying = false;
           setPlayBtnIcon(false);
-          showToast('Autoplay complete! ¡Muy bien!');
+          saveAutoplayPosition(autoplayDeckId, 0);
+          showAutoplayComplete();
         } else {
           autoplayIndex = nextIdx;
+          saveAutoplayPosition(autoplayDeckId, autoplayIndex);
           autoplayShowCard(autoplayIndex, true);
         }
       }, 3000);
@@ -1491,27 +1504,45 @@ function scheduleAutoplay() {
   }, 2000);
 }
 
-function setPlayBtnIcon(playing) {
-  const icon = document.getElementById('playbtn-icon');
-  if (!icon) return;
-  if (playing) {
-    // pause bars
-    icon.innerHTML = '<rect x="4" y="3" width="5" height="16" rx="1.5" fill="white"/><rect x="13" y="3" width="5" height="16" rx="1.5" fill="white"/>';
-  } else {
-    // play triangle
-    icon.innerHTML = '<polygon points="5,2 19,11 5,20" fill="white"/>';
-  }
+function showAutoplayComplete() {
+  const enEl = document.getElementById('autoplay-en-word');
+  const esEl = document.getElementById('autoplay-es-word');
+  if (enEl) enEl.textContent = '¡Muy bien!';
+  if (esEl) { esEl.textContent = 'All done'; esEl.style.opacity = '1'; }
 }
 
 function toggleAutoplay() {
   if (autoplayPlaying) {
     autoplayPlaying = false;
     stopAutoplayTimer();
+    window.speechSynthesis && window.speechSynthesis.cancel();
     setPlayBtnIcon(false);
   } else {
     autoplayPlaying = true;
     setPlayBtnIcon(true);
-    scheduleAutoplay();
+    const deck = decks.find(d => d.id === autoplayDeckId);
+    if (!deck) return;
+    // If we're at the end, restart from beginning
+    const atEnd = autoplayIndex >= deck.cards.length - 1
+      && document.getElementById('autoplay-en-word').textContent === '¡Muy bien!';
+    if (atEnd) {
+      autoplayIndex = 0;
+      saveAutoplayPosition(autoplayDeckId, 0);
+      autoplayShowCard(0, true);
+    } else {
+      const card = deck.cards[autoplayIndex];
+      speakTextWithCallback(card.en, 'en', () => scheduleAutoplay());
+    }
+  }
+}
+
+function setPlayBtnIcon(playing) {
+  const icon = document.getElementById('playbtn-icon');
+  if (!icon) return;
+  if (playing) {
+    icon.innerHTML = '<rect x="4" y="3" width="5" height="16" rx="1.5" fill="white"/><rect x="13" y="3" width="5" height="16" rx="1.5" fill="white"/>';
+  } else {
+    icon.innerHTML = '<polygon points="5,2 19,11 5,20" fill="white"/>';
   }
 }
 
@@ -1524,9 +1555,15 @@ function autoplayNext() {
   if (!deck) return;
   stopAutoplayTimer();
   window.speechSynthesis && window.speechSynthesis.cancel();
+  // Remove replay button if present
+  const rb = document.getElementById('autoplay-replay-btn');
+  if (rb) rb.remove();
   autoplayIndex = Math.min(autoplayIndex + 1, deck.cards.length - 1);
   saveAutoplayPosition(autoplayDeckId, autoplayIndex);
-  autoplayShowCard(autoplayIndex, autoplayPlaying);
+  // Always unpause
+  autoplayPlaying = true;
+  setPlayBtnIcon(true);
+  autoplayShowCard(autoplayIndex, true);
   setTimeout(() => {
     const esEl = document.getElementById('autoplay-es-word');
     if (esEl) esEl.style.opacity = '1';
@@ -1536,11 +1573,14 @@ function autoplayNext() {
 function autoplayPrev() {
   stopAutoplayTimer();
   window.speechSynthesis && window.speechSynthesis.cancel();
-  autoplayPlaying = false;
-  setPlayBtnIcon(false);
+  const rb = document.getElementById('autoplay-replay-btn');
+  if (rb) rb.remove();
   autoplayIndex = Math.max(autoplayIndex - 1, 0);
   saveAutoplayPosition(autoplayDeckId, autoplayIndex);
-  autoplayShowCard(autoplayIndex, false);
+  // Always unpause
+  autoplayPlaying = true;
+  setPlayBtnIcon(true);
+  autoplayShowCard(autoplayIndex, true);
   setTimeout(() => {
     const esEl = document.getElementById('autoplay-es-word');
     if (esEl) esEl.style.opacity = '1';
@@ -1683,7 +1723,7 @@ function confirmDeleteDeck(id) {
   if (!deck) return;
   showConfirm(
     `Delete "${deck.name}"?`,
-    `This will permanently delete the deck and all ${deck.cards.length} word${deck.cards.length !== 1 ? 's' : ''} in it.`,
+    `This will permanently delete the deck and all ${deck.cards.length} card${deck.cards.length !== 1 ? 's' : ''} in it.`,
     () => {
       decks = decks.filter(d => d.id !== id);
       save(); renderHome(); closeModal('modal-deck-detail'); closeModal('modal-deck');
@@ -1726,7 +1766,7 @@ function openDeckDetailModal(deckId) {
   const deck = decks.find(d => d.id === deckId);
   if (!deck) return;
   document.getElementById('deck-detail-name').textContent = deck.name;
-  document.getElementById('deck-detail-count').textContent = `${deck.cards.length} words`;
+  document.getElementById('deck-detail-count').textContent = `${deck.cards.length} cards`;
   renderDetailWordList(deck);
   openModal('modal-deck-detail');
 }
@@ -1737,7 +1777,7 @@ let editingWordId = null;
 function renderDetailWordList(deck) {
   const list = document.getElementById('detail-word-list');
   if (!deck.cards.length) {
-    list.innerHTML = '<p style="color:var(--ink-2);font-size:14px;text-align:center;padding:20px">No words yet. Add some!</p>';
+    list.innerHTML = '<p style="color:var(--ink-2);font-size:14px;text-align:center;padding:20px">No cards yet. Add some!</p>';
     return;
   }
   list.innerHTML = '';
@@ -1759,7 +1799,7 @@ function renderEditDeckWordList(deck) {
   const list = document.getElementById('edit-deck-word-list');
   if (!list) return;
   if (!deck.cards.length) {
-    list.innerHTML = '<p style="color:var(--ink-2);font-size:13px;text-align:center;padding:12px 0">No words yet.</p>';
+    list.innerHTML = '<p style="color:var(--ink-2);font-size:13px;text-align:center;padding:12px 0">No cards yet.</p>';
     return;
   }
   list.innerHTML = '';
@@ -1938,7 +1978,7 @@ function deleteWord(deckId, cardId) {
   renderDetailWordList(deck);
   renderEditDeckWordList(deck);
   const countEl = document.getElementById('deck-detail-count');
-  if (countEl) countEl.textContent = `${deck.cards.length} words`;
+  if (countEl) countEl.textContent = `${deck.cards.length} cards`;
   showToast('Word removed');
 }
 
