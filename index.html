@@ -592,7 +592,9 @@
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;padding-top:4px">
         <div style="display:flex;align-items:center;gap:8px">
           <button class="fab" onclick="openAddDeckModal()" title="New deck">＋</button>
-          <button id="sync-indicator" onclick="handleSyncTap()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--ink-3);padding:4px;" title="Not connected">⊙</button>
+          <button id="sync-indicator" onclick="handleSyncTap()" style="background:none;border:none;cursor:pointer;color:var(--ink-3);padding:4px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;" title="Not connected">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5" stroke="currentColor" stroke-width="2"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/></svg>
+          </button>
         </div>
         <button id="sync-label-btn" onclick="openSyncModal()" style="background:none;border:none;font-size:11px;color:var(--ink-3);cursor:pointer;font-family:'DM Sans',sans-serif;padding:0;">Connect Sheet</button>
       </div>
@@ -613,7 +615,9 @@
       <div class="study-deck-name" id="study-deck-name"></div>
       <div class="study-counter" id="study-counter"></div>
     </div>
-    <button class="btn-icon" onclick="openDeckDetailModal(currentDeckId)">⋯</button>
+    <button class="btn-icon" onclick="openDeckDetailModal(currentDeckId)">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="4" cy="9" r="1.5" fill="currentColor"/><circle cx="9" cy="9" r="1.5" fill="currentColor"/><circle cx="14" cy="9" r="1.5" fill="currentColor"/></svg>
+    </button>
   </div>
   <div class="study-progress-bar"><div class="study-progress-fill" id="study-progress-fill"></div></div>
   <div class="card-area" id="card-area"></div>
@@ -954,9 +958,14 @@ function setSyncStatus(status) {
   syncStatus = status;
   const el = document.getElementById('sync-indicator');
   if (!el) return;
-  const icons = { syncing: '⟳', ok: '✓', error: '!', idle: '⊙' };
+  const icons = {
+    syncing: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2a6 6 0 1 0 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    ok: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><polyline points="3,8 6.5,11.5 13,5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    error: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><line x1="8" y1="4" x2="8" y2="9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="8" cy="12" r="1" fill="currentColor"/></svg>',
+    idle: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5" stroke="currentColor" stroke-width="2"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/></svg>'
+  };
   const colors = { syncing: 'var(--ink-3)', ok: 'var(--green)', error: 'var(--red)', idle: 'var(--ink-3)' };
-  el.textContent = icons[status] || '⊙';
+  el.innerHTML = icons[status] || icons.idle;
   el.style.color = colors[status] || 'var(--ink-3)';
   el.title = { syncing: 'Syncing…', ok: 'Synced', error: 'Sync failed — tap to retry', idle: 'Not connected' }[status];
 }
@@ -989,7 +998,11 @@ function renderHome() {
             <div class="deck-meta">${deck.cards.length} card${deck.cards.length !== 1 ? 's' : ''}</div>
           </div>
           <div class="deck-actions">
-            <button class="btn-secondary" data-action="autoplay" style="padding:8px 12px;">▶</button>
+            <button class="btn-secondary" data-action="autoplay" style="padding:8px 12px;">
+              <svg width="12" height="14" viewBox="0 0 12 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <polygon points="0,0 12,7 0,14" fill="currentColor"/>
+              </svg>
+            </button>
             <button class="btn-primary" data-action="study">Study</button>
           </div>
         </div>
