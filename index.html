@@ -998,10 +998,7 @@ function renderHome() {
             <div class="deck-meta">${deck.cards.length} card${deck.cards.length !== 1 ? 's' : ''}</div>
           </div>
           <div class="deck-actions">
-            <button class="btn-secondary" data-action="autoplay" style="padding:8px 12px;">
-              <svg width="12" height="14" viewBox="0 0 12 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <polygon points="0,0 12,7 0,14" fill="currentColor"/>
-              </svg>
+            <button class="btn-secondary" data-action="autoplay" style="padding:8px 14px;display:flex;align-items:center;justify-content:center;">
             </button>
             <button class="btn-primary" data-action="study">Study</button>
           </div>
@@ -1012,7 +1009,18 @@ function renderHome() {
     div.querySelector('[data-action="study"]').addEventListener('click', e => {
       e.stopPropagation(); startStudy(deck.id);
     });
-    div.querySelector('[data-action="autoplay"]').addEventListener('click', e => {
+    const apBtn = div.querySelector('[data-action="autoplay"]');
+    const apSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    apSvg.setAttribute('width', '12');
+    apSvg.setAttribute('height', '14');
+    apSvg.setAttribute('viewBox', '0 0 12 14');
+    apSvg.setAttribute('fill', 'none');
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    poly.setAttribute('points', '0,0 12,7 0,14');
+    poly.setAttribute('fill', 'currentColor');
+    apSvg.appendChild(poly);
+    apBtn.appendChild(apSvg);
+    apBtn.addEventListener('click', e => {
       e.stopPropagation(); startAutoplay(deck.id);
     });
 
