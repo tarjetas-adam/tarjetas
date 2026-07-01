@@ -1598,9 +1598,20 @@ function autoplayPrev() {
   window.speechSynthesis && window.speechSynthesis.cancel();
   const rb = document.getElementById('autoplay-replay-btn');
   if (rb) rb.remove();
-  autoplayIndex = Math.max(autoplayIndex - 1, 0);
+
+  const deck = decks.find(d => d.id === autoplayDeckId);
+  if (!deck) return;
+
+  // If on complete screen, go back to last card
+  const enEl = document.getElementById('autoplay-en-word');
+  const isComplete = enEl && enEl.textContent === '¡Muy bien!';
+  if (isComplete) {
+    autoplayIndex = deck.cards.length - 1;
+  } else {
+    autoplayIndex = Math.max(autoplayIndex - 1, 0);
+  }
+
   saveAutoplayPosition(autoplayDeckId, autoplayIndex);
-  // Always unpause
   autoplayPlaying = true;
   setPlayBtnIcon(true);
   autoplayShowCard(autoplayIndex, true);
