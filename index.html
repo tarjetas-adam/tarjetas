@@ -998,7 +998,7 @@ function renderHome() {
             <div class="deck-meta">${deck.cards.length} card${deck.cards.length !== 1 ? 's' : ''}</div>
           </div>
           <div class="deck-actions">
-            <button class="btn-secondary" data-action="autoplay" style="padding:8px 14px;display:flex;align-items:center;justify-content:center;">
+            <button class="btn-secondary" data-action="autoplay" style="width:36px;height:36px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
             </button>
             <button class="btn-primary" data-action="study">Study</button>
           </div>
@@ -1011,12 +1011,12 @@ function renderHome() {
     });
     const apBtn = div.querySelector('[data-action="autoplay"]');
     const apSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    apSvg.setAttribute('width', '12');
-    apSvg.setAttribute('height', '14');
-    apSvg.setAttribute('viewBox', '0 0 12 14');
+    apSvg.setAttribute('width', '10');
+    apSvg.setAttribute('height', '11');
+    apSvg.setAttribute('viewBox', '0 0 10 11');
     apSvg.setAttribute('fill', 'none');
     const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    poly.setAttribute('points', '0,0 12,7 0,14');
+    poly.setAttribute('points', '1,0 11,5.5 1,11');
     poly.setAttribute('fill', 'currentColor');
     apSvg.appendChild(poly);
     apBtn.appendChild(apSvg);
