@@ -1469,7 +1469,10 @@ function exitAutoplay() {
   autoplayPlaying = false;
   setPlayBtnIcon(false);
   window.speechSynthesis && window.speechSynthesis.cancel();
-  saveAutoplayPosition(autoplayDeckId, autoplayIndex);
+  // Only save position if not completed (completed already saved 0)
+  const enEl = document.getElementById('autoplay-en-word');
+  const isComplete = enEl && enEl.textContent === '¡Muy bien!';
+  if (!isComplete) saveAutoplayPosition(autoplayDeckId, autoplayIndex);
   showScreen('home');
 }
 
@@ -1514,8 +1517,7 @@ function scheduleAutoplay() {
           autoplayPlaying = false;
           setPlayBtnIcon(false);
           saveAutoplayPosition(autoplayDeckId, 0);
-          showAutoplayComplete();
-        } else {
+          showAutoplayComplete();        } else {
           autoplayIndex = nextIdx;
           saveAutoplayPosition(autoplayDeckId, autoplayIndex);
           autoplayShowCard(autoplayIndex, true);
