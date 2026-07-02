@@ -60,6 +60,21 @@
   }
   .home-header h1 span { font-style: italic; color: var(--accent); }
 
+  .filter-pill {
+    background: var(--surface);
+    color: var(--ink-2);
+    border: 1.5px solid var(--border);
+    border-radius: 99px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-pill:hover { border-color: var(--accent); color: var(--ink); }
+  .filter-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
   .deck-list { padding: 8px 16px; }
 
   .deck-card {
@@ -599,6 +614,12 @@
         <button id="sync-label-btn" onclick="openSyncModal()" style="background:none;border:none;font-size:11px;color:var(--ink-3);cursor:pointer;font-family:'DM Sans',sans-serif;padding:0;">Connect Sheet</button>
       </div>
     </div>
+    <!-- Filter pills -->
+    <div style="display:flex;gap:6px;margin-top:14px;">
+      <button class="filter-pill active" data-filter="all" onclick="setFilter('all')">All</button>
+      <button class="filter-pill" data-filter="situations" onclick="setFilter('situations')">Situations</button>
+      <button class="filter-pill" data-filter="verbs" onclick="setFilter('verbs')">Verbs</button>
+    </div>
   </div>
   <div class="deck-list" id="deck-list"></div>
 </div>
@@ -973,6 +994,20 @@ function uid() { return 'id-' + Math.random().toString(36).slice(2); }
 function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 // ── HOME ──
+let currentFilter = 'all';
+
+function isVerb(deck) {
+  return deck.name === deck.name.toUpperCase() && /[A-ZÁÉÍÓÚÑÜ]/.test(deck.name);
+}
+
+function setFilter(filter) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.filter === filter);
+  });
+  renderHome();
+}
+
 function daysAgoLabel(ts) {
   if (!ts) return 'Never studied';
   const days = Math.floor((Date.now() - ts) / 86400000);
@@ -986,7 +1021,13 @@ function renderHome() {
   if (labelBtn) labelBtn.textContent = scriptUrl ? 'Synced via Sheet' : 'Connect Sheet';
   const list = document.getElementById('deck-list');
   list.innerHTML = '';
-  decks.forEach(deck => {
+
+  const filtered = decks.filter(deck => {
+    if (currentFilter === 'verbs') return isVerb(deck);
+    if (currentFilter === 'situations') return !isVerb(deck);
+    return true;
+  });
+  filtered.forEach(deck => {
     const div = document.createElement('div');
     div.className = 'deck-card';
     div.dataset.id = deck.id;
