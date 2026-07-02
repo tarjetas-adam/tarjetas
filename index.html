@@ -931,6 +931,7 @@ let autoplayDeckId = null;
 let autoplayIndex = 0;
 let autoplayPlaying = false;
 let autoplayTimer = null;
+let autoplayPhase = 'english'; // 'english' | 'spanish'
 
 // ── PERSISTENCE & SYNC ──
 let scriptUrl = localStorage.getItem('tarjetas-script-url') || '';
@@ -1546,32 +1547,46 @@ function autoplayShowCard(idx, andSchedule) {
   }
 }
 
+function estimateSpeechDuration(text) {
+  // Average Spanish speech at rate 0.85: ~120 words/min, ~5 chars/word
+  // So ~600 chars/min = 10 chars/sec → ms per char ≈ 100ms
+  // Add 300ms buffer
+  return Math.max(1000, text.length * 100 + 300);
+}
+
 function scheduleAutoplay() {
   stopAutoplayTimer();
-  // Wait 2s after English finishes, then reveal + speak Spanish
+  autoplayPhase = 'waiting';
+  const deck = decks.find(d => d.id === autoplayDeckId);
+  if (!deck) return;
+  const card = deck.cards[autoplayIndex];
+  // Pause = 2s + estimated duration of Spanish
+  const pauseMs = 2000 + estimateSpeechDuration(card.es);
   autoplayTimer = setTimeout(() => {
-    const deck = decks.find(d => d.id === autoplayDeckId);
-    if (!deck || !autoplayPlaying) return;
-    const card = deck.cards[autoplayIndex];
+    if (!autoplayPlaying) return;
     const esEl = document.getElementById('autoplay-es-word');
     if (esEl) esEl.style.opacity = '1';
+    autoplayPhase = 'spanish';
     speakTextWithCallback(card.es, 'es', () => {
-      // 3s after Spanish finishes → next card
+      autoplayPhase = 'after-spanish';
       autoplayTimer = setTimeout(() => {
         if (!autoplayPlaying) return;
         const nextIdx = autoplayIndex + 1;
         if (nextIdx >= deck.cards.length) {
           autoplayPlaying = false;
+          autoplayPhase = 'english';
           setPlayBtnIcon(false);
           saveAutoplayPosition(autoplayDeckId, 0);
-          showAutoplayComplete();        } else {
+          showAutoplayComplete();
+        } else {
           autoplayIndex = nextIdx;
+          autoplayPhase = 'english';
           saveAutoplayPosition(autoplayDeckId, autoplayIndex);
           autoplayShowCard(autoplayIndex, true);
         }
       }, 3000);
     });
-  }, 2000);
+  }, pauseMs);
 }
 
 function showAutoplayComplete() {
@@ -1592,15 +1607,41 @@ function toggleAutoplay() {
     setPlayBtnIcon(true);
     const deck = decks.find(d => d.id === autoplayDeckId);
     if (!deck) return;
-    // If we're at the end, restart from beginning
-    const atEnd = autoplayIndex >= deck.cards.length - 1
-      && document.getElementById('autoplay-en-word').textContent === '¡Muy bien!';
+    const atEnd = document.getElementById('autoplay-en-word').textContent === '¡Muy bien!';
     if (atEnd) {
       autoplayIndex = 0;
+      autoplayPhase = 'english';
       saveAutoplayPosition(autoplayDeckId, 0);
       autoplayShowCard(0, true);
-    } else {
+    } else if (autoplayPhase === 'spanish' || autoplayPhase === 'after-spanish') {
+      // Resume from Spanish
       const card = deck.cards[autoplayIndex];
+      const esEl = document.getElementById('autoplay-es-word');
+      if (esEl) esEl.style.opacity = '1';
+      autoplayPhase = 'spanish';
+      speakTextWithCallback(card.es, 'es', () => {
+        autoplayPhase = 'after-spanish';
+        autoplayTimer = setTimeout(() => {
+          if (!autoplayPlaying) return;
+          const nextIdx = autoplayIndex + 1;
+          if (nextIdx >= deck.cards.length) {
+            autoplayPlaying = false;
+            autoplayPhase = 'english';
+            setPlayBtnIcon(false);
+            saveAutoplayPosition(autoplayDeckId, 0);
+            showAutoplayComplete();
+          } else {
+            autoplayIndex = nextIdx;
+            autoplayPhase = 'english';
+            saveAutoplayPosition(autoplayDeckId, autoplayIndex);
+            autoplayShowCard(autoplayIndex, true);
+          }
+        }, 3000);
+      });
+    } else {
+      // Resume from English
+      const card = deck.cards[autoplayIndex];
+      autoplayPhase = 'english';
       speakTextWithCallback(card.en, 'en', () => scheduleAutoplay());
     }
   }
@@ -1625,19 +1666,14 @@ function autoplayNext() {
   if (!deck) return;
   stopAutoplayTimer();
   window.speechSynthesis && window.speechSynthesis.cancel();
-  // Remove replay button if present
   const rb = document.getElementById('autoplay-replay-btn');
   if (rb) rb.remove();
   autoplayIndex = Math.min(autoplayIndex + 1, deck.cards.length - 1);
   saveAutoplayPosition(autoplayDeckId, autoplayIndex);
-  // Always unpause
   autoplayPlaying = true;
+  autoplayPhase = 'english';
   setPlayBtnIcon(true);
   autoplayShowCard(autoplayIndex, true);
-  setTimeout(() => {
-    const esEl = document.getElementById('autoplay-es-word');
-    if (esEl) esEl.style.opacity = '1';
-  }, 50);
 }
 
 function autoplayPrev() {
@@ -1645,11 +1681,8 @@ function autoplayPrev() {
   window.speechSynthesis && window.speechSynthesis.cancel();
   const rb = document.getElementById('autoplay-replay-btn');
   if (rb) rb.remove();
-
   const deck = decks.find(d => d.id === autoplayDeckId);
   if (!deck) return;
-
-  // If on complete screen, go back to last card
   const enEl = document.getElementById('autoplay-en-word');
   const isComplete = enEl && enEl.textContent === '¡Muy bien!';
   if (isComplete) {
@@ -1657,15 +1690,11 @@ function autoplayPrev() {
   } else {
     autoplayIndex = Math.max(autoplayIndex - 1, 0);
   }
-
   saveAutoplayPosition(autoplayDeckId, autoplayIndex);
   autoplayPlaying = true;
+  autoplayPhase = 'english';
   setPlayBtnIcon(true);
   autoplayShowCard(autoplayIndex, true);
-  setTimeout(() => {
-    const esEl = document.getElementById('autoplay-es-word');
-    if (esEl) esEl.style.opacity = '1';
-  }, 50);
 }
 
 // ── TTS ──
