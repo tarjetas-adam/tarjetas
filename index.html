@@ -1282,14 +1282,15 @@ function startStudy(deckId) {
 
   currentDeckId = deckId;
   const saved = loadStudyProgress(deckId);
-  if (saved && saved.cardIndex < deck.cards.length) {
+  if (saved && saved.cardIndex > 0 && saved.cardIndex < deck.cards.length) {
     studyQueue = [...deck.cards];
     missedCards = saved.missed || [];
     roundKnown = saved.known || 0;
     currentCardIndex = saved.cardIndex;
     totalCards = studyQueue.length;
-    isFirstRound = saved.isFirstRound !== false; // default true if not saved
+    isFirstRound = saved.isFirstRound !== false;
   } else {
+    clearStudyProgress(deckId);
     studyQueue = [...deck.cards];
     missedCards = [];
     roundKnown = 0;
