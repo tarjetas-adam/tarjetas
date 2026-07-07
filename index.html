@@ -907,8 +907,8 @@ let roundKnown = 0;
 let totalCards = 0;
 
 // Study progress persistence per deck
-function saveStudyProgress(deckId, cardIndex, missed, known) {
-  localStorage.setItem('study-progress-' + deckId, JSON.stringify({ cardIndex, missed, known }));
+function saveStudyProgress(deckId, cardIndex, missed, known, firstRound) {
+  localStorage.setItem('study-progress-' + deckId, JSON.stringify({ cardIndex, missed, known, isFirstRound: firstRound }));
 }
 function loadStudyProgress(deckId) {
   const raw = localStorage.getItem('study-progress-' + deckId);
@@ -1042,8 +1042,11 @@ function renderHome() {
       <div class="deck-card-inner">
         <div class="deck-card-row">
           <div class="deck-card-text">
-            <h3>${esc(deck.name)}</h3>
-            <div class="deck-meta">${deck.cards.length} card${deck.cards.length !== 1 ? 's' : ''}</div>
+            <div style="font-size:15px;font-weight:600;color:var(--ink);">${esc(deck.name)}</div>
+            <div class="deck-meta" style="display:flex;align-items:center;gap:8px;">
+              <span style="display:inline-block;min-width:5.5ch;">${deck.cards.length} cards</span>
+              ${(()=>{ const m=getMastery(deck.id); return (m.known.length+m.notKnown.length)>0 ? `<span style="font-size:11px;font-weight:400;color:#D4580A;background:rgba(212,88,10,0.12);border-radius:99px;padding:2px 8px;">${getMasteryPct(deck)}%</span>` : ''; })()}
+            </div>
           </div>
           <div class="deck-actions">
             <button class="btn-secondary" data-action="autoplay" style="width:36px;height:36px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -1255,7 +1258,22 @@ function reorderDecks(fromId, toId) {
   save(); renderHome();
 }
 
+function getMastery(deckId) {
+  const raw = localStorage.getItem('mastery-' + deckId);
+  return raw ? JSON.parse(raw) : { known: [], notKnown: [] };
+}
+function setMastery(deckId, mastery) {
+  localStorage.setItem('mastery-' + deckId, JSON.stringify(mastery));
+}
+function getMasteryPct(deck) {
+  if (!deck.cards.length) return 0;
+  const m = getMastery(deck.id);
+  return Math.round(m.known.length / deck.cards.length * 100);
+}
+
 // ── STUDY ──
+let isFirstRound = false;
+
 function startStudy(deckId) {
   const deck = decks.find(d => d.id === deckId);
   if (!deck || !deck.cards.length) { showToast('No cards in this deck!'); return; }
@@ -1270,12 +1288,14 @@ function startStudy(deckId) {
     roundKnown = saved.known || 0;
     currentCardIndex = saved.cardIndex;
     totalCards = studyQueue.length;
+    isFirstRound = saved.isFirstRound !== false; // default true if not saved
   } else {
     studyQueue = [...deck.cards];
     missedCards = [];
     roundKnown = 0;
     totalCards = studyQueue.length;
     currentCardIndex = 0;
+    isFirstRound = true;
   }
   isFlipped = false;
 
@@ -1286,7 +1306,7 @@ function startStudy(deckId) {
 }
 
 function exitStudy() {
-  saveStudyProgress(currentDeckId, currentCardIndex, missedCards, roundKnown);
+  saveStudyProgress(currentDeckId, currentCardIndex, missedCards, roundKnown, isFirstRound);
   showScreen('home'); renderHome();
 }
 
@@ -1344,13 +1364,25 @@ function swipeCard(dir) {
   if (dir === 'left') {
     fc.classList.add('swipe-left');
     missedCards.push(card);
+    if (isFirstRound) {
+      const m = getMastery(currentDeckId);
+      m.known = m.known.filter(id => id !== card.id);
+      if (!m.notKnown.includes(card.id)) m.notKnown.push(card.id);
+      setMastery(currentDeckId, m);
+    }
   } else {
     fc.classList.add('swipe-right');
     roundKnown++;
+    if (isFirstRound) {
+      const m = getMastery(currentDeckId);
+      m.notKnown = m.notKnown.filter(id => id !== card.id);
+      if (!m.known.includes(card.id)) m.known.push(card.id);
+      setMastery(currentDeckId, m);
+    }
   }
   setTimeout(() => {
     currentCardIndex++;
-    saveStudyProgress(currentDeckId, currentCardIndex, missedCards, roundKnown);
+    saveStudyProgress(currentDeckId, currentCardIndex, missedCards, roundKnown, isFirstRound);
     renderStudyCard();
   }, 350);
 }
@@ -1391,18 +1423,22 @@ function showRoundComplete() {
 }
 
 function nextRound() {
-  // Keep missed cards in original deck order
   const deck = decks.find(d => d.id === currentDeckId);
   const deckOrder = deck ? deck.cards.map(c => c.id) : [];
   studyQueue = [...missedCards].sort((a, b) => deckOrder.indexOf(a.id) - deckOrder.indexOf(b.id));
   missedCards = [];
   roundKnown = 0;
   currentCardIndex = 0;
+  isFirstRound = false;
   // study-actions hidden
   renderStudyCard();
 }
 
-function restartStudy() { clearStudyProgress(currentDeckId); startStudy(currentDeckId); }
+function restartStudy() {
+  clearStudyProgress(currentDeckId);
+  localStorage.removeItem('mastery-' + currentDeckId);
+  startStudy(currentDeckId);
+}
 
 // ── SWIPE ──
 function setupSwipe() {
