@@ -1,0 +1,31 @@
+{
+  "name": "Tarjetas",
+  "short_name": "Tarjetas",
+  "description": "Spanish flashcards — study, autoplay, sync",
+  "start_url": "/tarjetas/",
+  "scope": "/tarjetas/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F7EFE6",
+  "theme_color": "#D4580A",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
