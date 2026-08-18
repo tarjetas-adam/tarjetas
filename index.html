@@ -746,7 +746,13 @@
       <input type="text" id="word-en-input" placeholder="e.g. hello" />
     </div>
     <div class="form-group">
-      <label>Spanish</label>
+      <label style="display:flex;align-items:center;justify-content:space-between;">
+        Spanish
+        <button id="translate-btn" onclick="translateEnToEs()" style="background:none;border:none;font-size:11px;font-weight:600;color:var(--accent);cursor:pointer;font-family:'DM Sans',sans-serif;padding:0;display:flex;align-items:center;gap:4px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg>
+          Translate
+        </button>
+      </label>
       <input type="text" id="word-es-input" placeholder="e.g. hola" />
     </div>
     <div class="form-group">
@@ -786,7 +792,13 @@
       <input type="text" id="edit-word-en-input" />
     </div>
     <div class="form-group">
-      <label>Spanish</label>
+      <label style="display:flex;align-items:center;justify-content:space-between;">
+        Spanish
+        <button onclick="translateEnToEs('edit')" style="background:none;border:none;font-size:11px;font-weight:600;color:var(--accent);cursor:pointer;font-family:'DM Sans',sans-serif;padding:0;display:flex;align-items:center;gap:4px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg>
+          Translate
+        </button>
+      </label>
       <input type="text" id="edit-word-es-input" />
     </div>
     <div class="form-group">
@@ -2166,6 +2178,62 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+async function translateEnToEs(mode) {
+  const enInput = mode === 'edit'
+    ? document.getElementById('edit-word-en-input')
+    : document.getElementById('word-en-input');
+  const esInput = mode === 'edit'
+    ? document.getElementById('edit-word-es-input')
+    : document.getElementById('word-es-input');
+  const ctxInput = mode === 'edit'
+    ? document.getElementById('edit-word-ctx-input')
+    : document.getElementById('word-ctx-input');
+
+  const en = enInput && enInput.value.trim();
+  if (!en) { showToast('Type something in English first'); return; }
+
+  const btn = mode === 'edit'
+    ? null
+    : document.getElementById('translate-btn');
+  if (btn) { btn.textContent = '…'; btn.disabled = true; }
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 200,
+        messages: [{
+          role: 'user',
+          content: `Translate this English word, phrase or sentence into natural Castilian Spanish (Spain, tú form).
+Return ONLY valid JSON, no markdown, no explanation:
+{"spanish":"...","context":"..."}
+
+Rules:
+- "spanish": the translation, max 45 characters
+- "context": a short natural example sentence using the Spanish translation, max 45 characters. If no good example comes to mind, return empty string.
+
+English: "${en}"`
+        }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.[0]?.text || '';
+    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    if (esInput && parsed.spanish) esInput.value = parsed.spanish;
+    if (ctxInput && parsed.context) ctxInput.value = parsed.context;
+    showToast('Translated!');
+  } catch(e) {
+    showToast('Translation failed — check connection');
+  } finally {
+    if (btn) {
+      btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg> Translate`;
+      btn.disabled = false;
+    }
+  }
 }
 
 function openSyncModal() {
