@@ -49,9 +49,7 @@
   .screen.active { display: flex; }
 
   /* ── HOME ── */
-  #home { overflow-y: scroll; padding: 0 0 80px; -webkit-overflow-scrolling: touch; scroll-snap-type: y proximity; }
-  .deck-card { scroll-snap-align: start; }
-  .script-card { scroll-snap-align: start; }
+  #home { overflow-y: scroll; padding: 0 0 80px; -webkit-overflow-scrolling: touch; }
 
   .home-header {
     padding: 52px 24px 24px;
@@ -882,13 +880,11 @@
     </div>
   </div>
   <div class="player-controls" style="justify-content:center;position:relative;">
-    <button class="speed-btn" onclick="setSpeed(0.8)" data-speed="0.8" style="position:absolute;left:calc(50% - 80px);">0.8×</button>
     <button class="player-play-btn" id="player-play-btn" onclick="togglePlayer()">
       <svg id="player-play-icon" width="22" height="22" viewBox="0 0 22 22" fill="none">
         <polygon points="5,2 19,11 5,20" fill="#1A1814"/>
       </svg>
     </button>
-    <button class="speed-btn" onclick="setSpeed(1.2)" data-speed="1.2" style="position:absolute;right:calc(50% - 80px);">1.2×</button>
   </div>
 </div>
 
@@ -3506,6 +3502,61 @@ function updateNavDots(activeScreen) {
   });
 }
 
+function setupDirectionalSnap() {
+  const home = document.getElementById('home');
+  if (!home) return;
+  let scrollStart = 0;
+  let snapTimer = null;
+  let lastScrollY = 0;
+  let scrollDir = 0;
+
+  home.addEventListener('touchstart', e => {
+    scrollStart = home.scrollTop;
+    lastScrollY = home.scrollTop;
+    clearTimeout(snapTimer);
+  }, { passive: true });
+
+  home.addEventListener('scroll', () => {
+    const current = home.scrollTop;
+    scrollDir = current > lastScrollY ? 1 : -1;
+    lastScrollY = current;
+    clearTimeout(snapTimer);
+    snapTimer = setTimeout(() => doSnap(scrollDir), 80);
+  }, { passive: true });
+}
+
+function doSnap(direction) {
+  const home = document.getElementById('home');
+  if (!home) return;
+  const header = home.querySelector('.home-header');
+  const headerH = header ? header.offsetHeight : 0;
+  const scrollTop = home.scrollTop;
+
+  // Get all card elements
+  const cards = home.querySelectorAll('.deck-card, .script-card');
+  if (!cards.length) return;
+
+  // Find snap targets (top of each card relative to scroll container)
+  const targets = Array.from(cards).map(card => {
+    return card.offsetTop - headerH;
+  });
+  targets.unshift(0); // top of list
+
+  // Find best target based on direction
+  let best = null;
+  if (direction > 0) {
+    // Scrolling down — snap to next card whose top is below current scroll
+    best = targets.find(t => t > scrollTop + 10);
+    if (best == null) best = targets[targets.length - 1];
+  } else {
+    // Scrolling up — snap to previous card whose top is above current scroll
+    const above = targets.filter(t => t < scrollTop - 10);
+    best = above.length ? above[above.length - 1] : 0;
+  }
+
+  home.scrollTo({ top: Math.max(0, best), behavior: 'smooth' });
+}
+
 // ── INIT ──
 load();
 loadScripts();
@@ -3521,6 +3572,7 @@ setTimeout(() => {
   if (header && home) {
     home.style.scrollPaddingTop = header.offsetHeight + 'px';
   }
+  setupDirectionalSnap();
 }, 300);
 if (scriptUrl) {
   setSyncStatus('idle');
