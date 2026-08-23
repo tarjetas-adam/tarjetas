@@ -141,7 +141,7 @@
     transition: opacity 0.15s;
   }
   .btn-primary:hover { opacity: 0.85; }
-  .btn-primary:active { opacity: 0.7; transform: scale(0.97); }
+  .btn-primary:active { opacity: 0.7; animation: btnPress 0.3s ease; }
 
   .btn-secondary {
     background: var(--surface-2);
@@ -155,7 +155,9 @@
     cursor: pointer;
     transition: background 0.15s;
   }
-  .btn-secondary:hover { background: var(--border); }
+  .btn-secondary:active, .btn-secondary.pressed {
+    animation: btnPress 0.3s ease;
+  }
 
   .fab {
     background: none;
@@ -173,7 +175,7 @@
     transition: opacity 0.15s;
   }
   .fab:hover { opacity: 0.7; }
-  .fab:active { opacity: 0.5; }
+  .fab:active { opacity: 0.5; animation: btnPress 0.3s ease; }
 
   /* ── STUDY ── */
   #study { background: var(--bg); }
@@ -585,6 +587,199 @@
   #deck-detail-name { font-family: 'DM Serif Display', serif; font-size: 22px; margin-bottom: 4px; letter-spacing: -0.3px; }
   #deck-detail-count { color: var(--ink-2); font-size: 13px; margin-bottom: 20px; }
 
+  /* ── SCRIPTS ── */
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateX(-24px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes playerSlideIn {
+    from { opacity: 0; transform: translateY(40px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes btnPress {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(0.88); }
+    100% { transform: scale(1); }
+  }
+  .card-fade-in {
+    animation: fadeSlideIn 0.35s ease both;
+  }
+  #header-subtitle {
+    transition: opacity 0.25s ease;
+  }
+  .script-play-btn {
+    transition: transform 0.15s ease;
+  }
+  .script-play-btn:active, .script-play-btn.pressed {
+    animation: btnPress 0.3s ease;
+  }
+  .player-play-btn:active, .player-play-btn.pressed {
+    animation: btnPress 0.3s ease;
+  }
+  #script-player.slide-in {
+    animation: playerSlideIn 0.4s cubic-bezier(0.4,0,0.2,1) both;
+  }
+
+  .script-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    border: 1.5px solid transparent;
+    transition: box-shadow 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
+    touch-action: pan-y;
+  }
+  .script-card:hover { border-color: var(--accent); }
+  .script-card.dragging { opacity: 0.4; border-color: var(--accent); }
+
+  .script-card-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .script-card-text { flex: 1; min-width: 0; }
+  .script-card h3 { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; color: var(--ink); }
+  .script-card .script-meta { font-size: 12px; color: var(--ink-2); margin-top: 3px; font-style: italic; }
+  .script-play-btn {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--accent); border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+    transition: opacity 0.15s;
+  }
+  .script-play-btn:hover { opacity: 0.85; }
+
+  #script-player.active {
+    background: var(--ink);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .player-header {
+    padding: 20px 20px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .player-title {
+    flex: 1;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .player-text-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 100px 24px 80px;
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    line-height: 1.7;
+    color: #fff;
+    scroll-behavior: smooth;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 85%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 85%, transparent 100%);
+  }
+
+  .player-sentence {
+    display: inline;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .player-sentence.done { color: rgba(255,255,255,0.25); }
+  .player-sentence.active { color: #D4580A; }
+  .player-sentence.upcoming { color: #fff; }
+
+  .player-sentence.selected-word {
+    background: rgba(212,88,10,0.4);
+    border-radius: 3px;
+    padding: 1px 3px;
+  }
+
+  .player-progress {
+    padding: 0 20px 8px;
+    flex-shrink: 0;
+  }
+  .player-progress-track {
+    height: 2px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .player-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 99px;
+  }
+
+  .player-controls {
+    padding: 12px 24px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .speed-btn {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.4);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: color 0.15s;
+  }
+  .speed-btn:hover { color: rgba(255,255,255,0.8); }
+  .speed-btn.active { color: var(--accent); }
+
+  .player-btn {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    border-radius: 50%;
+    width: 48px; height: 48px;
+    color: rgba(255,255,255,0.7);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .player-btn:hover { background: rgba(255,255,255,0.18); }
+  .player-play-btn {
+    width: 56px; height: 56px;
+    background: #fff;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.15s;
+  }
+  .player-play-btn:hover { opacity: 0.9; }
+
+  /* Flashcard popup */
+  .fc-popup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 400;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .fc-popup {
+    background: var(--surface);
+    border-radius: 20px 20px 0 0;
+    width: 100%;
+    max-width: 480px;
+    padding: 24px 20px 40px;
+    animation: slideUp 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+
   .toast {
     position: fixed;
     bottom: 100px;
@@ -607,14 +802,16 @@
 </head>
 <body>
 
-<!-- HOME -->
-<div id="home" class="screen active">
+<!-- HOME (unified — contains both flash cards and scripts views) -->
+<div id="home" class="screen active" style="overflow-y:auto;padding:0 0 80px;">
   <div class="home-header">
     <div style="display:flex;align-items:flex-start;justify-content:space-between">
-      <h1>Tarjetas<br><span>flash cards</span></h1>
+      <h1>Tarjetas<br>
+        <span id="header-subtitle" style="display:inline-block;">flash cards</span>
+      </h1>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;padding-top:4px">
         <div style="display:flex;align-items:center;gap:8px">
-          <button class="fab" onclick="openAddDeckModal()" title="New deck">＋</button>
+          <button class="fab" id="header-add-btn" onclick="openAddDeckModal()" title="New deck">＋</button>
           <button id="sync-indicator" onclick="handleSyncTap()" style="background:none;border:none;cursor:pointer;color:var(--ink-3);padding:4px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;" title="Not connected">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5" stroke="currentColor" stroke-width="2"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/></svg>
           </button>
@@ -622,14 +819,53 @@
         <button id="sync-label-btn" onclick="openSyncModal()" style="background:none;border:none;font-size:11px;color:var(--ink-3);cursor:pointer;font-family:'DM Sans',sans-serif;padding:0;">Connect Sheet</button>
       </div>
     </div>
-    <!-- Filter pills -->
-    <div style="display:flex;gap:6px;margin-top:14px;margin-bottom:0;">
+    <!-- Pills row -->
+    <div id="pills-row" style="display:flex;gap:6px;margin-top:14px;margin-bottom:0;">
       <button class="filter-pill active" data-filter="all" onclick="setFilter('all')">All</button>
       <button class="filter-pill" data-filter="situations" onclick="setFilter('situations')">Situations</button>
       <button class="filter-pill" data-filter="verbs" onclick="setFilter('verbs')">Verbs</button>
     </div>
   </div>
-  <div class="deck-list" id="deck-list"></div>
+
+  <!-- Flash cards content -->
+  <div id="deck-list-wrap">
+    <div class="deck-list" id="deck-list"></div>
+  </div>
+
+  <!-- Scripts content (hidden initially) -->
+  <div id="script-list-wrap" style="display:none;">
+    <div class="deck-list" id="script-list"></div>
+  </div>
+</div>
+
+<!-- SCRIPTS screen removed — merged into home -->
+
+<!-- SCRIPT PLAYER -->
+<div id="script-player" class="screen">
+  <div class="player-header">
+    <button class="btn-icon" onclick="exitPlayer()" style="color:rgba(255,255,255,0.5);">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <polyline points="13,4 7,10 13,16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div class="player-title" id="player-title"></div>
+    <button id="player-add-btn" onclick="toggleSelectionMode()" style="color:rgba(255,255,255,0.5);font-size:20px;font-weight:400;background:none;border:none;cursor:pointer;padding:4px;transition:color 0.2s, font-weight 0.2s, transform 0.15s;">＋</button>
+  </div>
+  <div class="player-text-area" id="player-text-area"></div>
+  <div class="player-progress">
+    <div class="player-progress-track">
+      <div class="player-progress-fill" id="player-progress-fill" style="width:0%"></div>
+    </div>
+  </div>
+  <div class="player-controls" style="justify-content:center;position:relative;">
+    <button class="speed-btn" onclick="setSpeed(0.8)" data-speed="0.8" style="position:absolute;left:calc(50% - 80px);">0.8×</button>
+    <button class="player-play-btn" id="player-play-btn" onclick="togglePlayer()">
+      <svg id="player-play-icon" width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <polygon points="5,2 19,11 5,20" fill="#1A1814"/>
+      </svg>
+    </button>
+    <button class="speed-btn" onclick="setSpeed(1.2)" data-speed="1.2" style="position:absolute;right:calc(50% - 80px);">1.2×</button>
+  </div>
 </div>
 
 <!-- STUDY -->
@@ -748,16 +984,13 @@
     <div class="form-group">
       <label style="display:flex;align-items:center;justify-content:space-between;">
         Spanish
-        <button id="translate-btn" onclick="translateEnToEs()" style="background:none;border:none;font-size:11px;font-weight:600;color:var(--accent);cursor:pointer;font-family:'DM Sans',sans-serif;padding:0;display:flex;align-items:center;gap:4px;">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg>
-          Translate
-        </button>
+        <span id="suggest-en-status" style="font-size:11px;color:var(--ink-3);font-style:italic;"></span>
       </label>
       <input type="text" id="word-es-input" placeholder="e.g. hola" />
-    </div>
-    <div class="form-group">
-      <label>Context / example (optional)</label>
-      <input type="text" id="word-ctx-input" placeholder="e.g. ¡Hola, buenos días!" />
+      <button id="translate-btn" onclick="translateEnToEs()" style="margin-top:8px;background:none;border:1.5px solid var(--accent);border-radius:99px;padding:7px 16px;font-size:13px;font-weight:600;color:var(--accent);cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:6px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg>
+        Translate from English
+      </button>
     </div>
     <div class="form-group">
       <label>Deck</label>
@@ -801,13 +1034,40 @@
       </label>
       <input type="text" id="edit-word-es-input" />
     </div>
-    <div class="form-group">
-      <label>Context / example (optional)</label>
-      <input type="text" id="edit-word-ctx-input" />
-    </div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeModal('modal-edit-word')">Cancel</button>
       <button class="btn-primary" onclick="saveEditWord()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add/Edit Script -->
+<div class="modal-overlay" id="modal-script">
+  <div class="modal">
+    <h2 id="modal-script-title">Add a script</h2>
+    <div class="form-group">
+      <label>Title</label>
+      <input type="text" id="script-title-input" placeholder="e.g. Arrival — opening" maxlength="30" />
+    </div>
+    <div class="form-group">
+      <label>Spanish text</label>
+      <textarea id="script-text-input" placeholder="Paste your Spanish script here…" style="width:100%;min-height:140px;background:var(--surface-2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--ink);outline:none;resize:vertical;line-height:1.5;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('modal-script')">Cancel</button>
+      <button class="btn-primary" onclick="saveScript()">Save script</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Confirm Delete Script -->
+<div class="modal-overlay" id="modal-confirm-script">
+  <div class="modal" style="padding-bottom:28px">
+    <h2 id="confirm-script-title" style="font-size:18px;margin-bottom:10px"></h2>
+    <p id="confirm-script-msg" style="color:var(--ink-2);font-size:14px;line-height:1.5;margin-bottom:20px"></p>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('modal-confirm-script')" style="border-radius:var(--radius-sm);padding:13px 20px;">Cancel</button>
+      <button class="btn-primary" id="confirm-script-ok-btn" style="border-radius:var(--radius-sm);background:var(--red);">Delete</button>
     </div>
   </div>
 </div>
@@ -843,6 +1103,11 @@
       <button onclick="disconnectSheet()" style="background:none;border:none;color:var(--red);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;">Disconnect sheet</button>
     </div>
   </div>
+</div>
+
+<div id="nav-dots" style="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:50;pointer-events:auto;">
+  <div class="nav-dot" data-screen="home" onclick="switchToView('decks')" style="width:8px;height:8px;border-radius:50%;background:var(--accent);cursor:pointer;transition:background 0.2s;"></div>
+  <div class="nav-dot" data-screen="scripts" onclick="switchToView('scripts')" style="width:8px;height:8px;border-radius:50%;background:var(--border);cursor:pointer;transition:background 0.2s;"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1092,7 +1357,10 @@ function renderHome() {
     apSvg.appendChild(poly);
     apBtn.appendChild(apSvg);
     apBtn.addEventListener('click', e => {
-      e.stopPropagation(); startAutoplay(deck.id);
+      e.stopPropagation();
+      apBtn.classList.add('pressed');
+      setTimeout(() => apBtn.classList.remove('pressed'), 300);
+      startAutoplay(deck.id);
     });
 
     attachDeckCardBehavior(div, deck.id);
@@ -1348,8 +1616,7 @@ function renderStudyCard() {
         <div class="card-face card-back" id="card-back">
           <div class="card-label">Español</div>
           <div class="card-word">${esc(card.es)}</div>
-          ${card.ctx ? `<div class="card-context">${esc(card.ctx)}</div>` : ''}
-          <button class="btn-speaker" id="btn-speaker">
+          ${card.ctx ? `<div class="card-context">${esc(card.ctx)}</div>` : ''}          <button class="btn-speaker" id="btn-speaker">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
               <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
             </svg>
@@ -1908,7 +2175,8 @@ function confirmDeleteDeck(id) {
 function openAddWordModal(deckId) {
   document.getElementById('word-en-input').value = '';
   document.getElementById('word-es-input').value = '';
-  document.getElementById('word-ctx-input').value = '';
+  const status = document.getElementById('suggest-en-status');
+  if (status) status.textContent = '';
   const sel = document.getElementById('word-deck-select');
   sel.innerHTML = '';
   decks.forEach(d => {
@@ -1918,18 +2186,29 @@ function openAddWordModal(deckId) {
     sel.appendChild(opt);
   });
   openModal('modal-word');
+
+  // Auto-fill English after user stops typing Spanish (800ms debounce)
+  const esInput = document.getElementById('word-es-input');
+  let debounceTimer = null;
+  const handler = () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(autoFillEnglish, 800);
+  };
+  esInput.removeEventListener('input', esInput._autoFillHandler);
+  esInput._autoFillHandler = handler;
+  esInput.addEventListener('input', handler);
+
   setTimeout(() => document.getElementById('word-en-input').focus(), 200);
 }
 
 function saveWord() {
   const en = document.getElementById('word-en-input').value.trim();
   const es = document.getElementById('word-es-input').value.trim();
-  const ctx = document.getElementById('word-ctx-input').value.trim();
   const deckId = document.getElementById('word-deck-select').value;
   if (!en || !es) { showToast('Please fill in both English and Spanish'); return; }
   const deck = decks.find(d => d.id === deckId);
   if (!deck) return;
-  deck.cards.push({ id: uid(), en, es, ctx });
+  deck.cards.push({ id: uid(), en, es, ctx: '' });
   save(); renderHome(); closeModal('modal-word');
   showToast('Word added!');
 }
@@ -2130,12 +2409,11 @@ function openEditWordModal(deckId, cardId) {
 function saveEditWord() {
   const en = document.getElementById('edit-word-en-input').value.trim();
   const es = document.getElementById('edit-word-es-input').value.trim();
-  const ctx = document.getElementById('edit-word-ctx-input').value.trim();
   if (!en || !es) { showToast('Please fill in both fields'); return; }
   const deck = decks.find(d => d.id === editingWordDeckId);
   const card = deck && deck.cards.find(c => c.id === editingWordId);
   if (!card) return;
-  card.en = en; card.es = es; card.ctx = ctx;
+  card.en = en; card.es = es;
   save(); renderHome();
   const updatedDeck = decks.find(d => d.id === editingWordDeckId);
   if (updatedDeck) { renderDetailWordList(updatedDeck); renderEditDeckWordList(updatedDeck); }
@@ -2172,6 +2450,13 @@ function shuffle(arr) {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  const dots = document.getElementById('nav-dots');
+  if (dots) dots.style.display = (id === 'home') ? 'flex' : 'none';
+  // Animate cards when returning to home
+  if (id === 'home') {
+    const listId = currentView === 'scripts' ? 'script-list' : 'deck-list';
+    setTimeout(() => animateCardsIn(listId), 50);
+  }
 }
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -2187,54 +2472,55 @@ async function translateEnToEs(mode) {
   const esInput = mode === 'edit'
     ? document.getElementById('edit-word-es-input')
     : document.getElementById('word-es-input');
-  const ctxInput = mode === 'edit'
-    ? document.getElementById('edit-word-ctx-input')
-    : document.getElementById('word-ctx-input');
 
   const en = enInput && enInput.value.trim();
   if (!en) { showToast('Type something in English first'); return; }
+  if (!scriptUrl) { showToast('Connect your Google Sheet first'); return; }
 
-  const btn = mode === 'edit'
-    ? null
-    : document.getElementById('translate-btn');
-  if (btn) { btn.textContent = '…'; btn.disabled = true; }
+  const btn = document.getElementById('translate-btn');
+  if (btn) { btn.textContent = 'Translating…'; btn.disabled = true; }
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 200,
-        messages: [{
-          role: 'user',
-          content: `Translate this English word, phrase or sentence into natural Castilian Spanish (Spain, tú form).
-Return ONLY valid JSON, no markdown, no explanation:
-{"spanish":"...","context":"..."}
-
-Rules:
-- "spanish": the translation, max 45 characters
-- "context": a short natural example sentence using the Spanish translation, max 45 characters. If no good example comes to mind, return empty string.
-
-English: "${en}"`
-        }]
-      })
-    });
+    const url = scriptUrl + '?action=translate&text=' + encodeURIComponent(en);
+    const res = await fetch(url);
     const data = await res.json();
-    const text = data.content?.[0]?.text || '';
-    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
-    if (esInput && parsed.spanish) esInput.value = parsed.spanish;
-    if (ctxInput && parsed.context) ctxInput.value = parsed.context;
-    showToast('Translated!');
+    if (data.ok && data.spanish) {
+      esInput.value = data.spanish;
+      showToast('Translated!');
+    } else {
+      showToast('Translation failed');
+    }
   } catch(e) {
     showToast('Translation failed — check connection');
   } finally {
     if (btn) {
-      btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg> Translate`;
+      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg> Translate from English`;
       btn.disabled = false;
     }
   }
 }
+
+async function autoFillEnglish() {
+  const es = document.getElementById('word-es-input')?.value.trim();
+  const enInput = document.getElementById('word-en-input');
+  if (!es || !scriptUrl) return;
+  if (enInput && enInput.value.trim()) return; // don't overwrite
+  const status = document.getElementById('suggest-en-status');
+  if (status) status.textContent = 'translating…';
+  try {
+    const res = await fetch(scriptUrl + '?action=translate&text=' + encodeURIComponent(es));
+    const data = await res.json();
+    if (data.ok && data.spanish && enInput) {
+      enInput.value = data.spanish;
+      if (status) status.textContent = '✓ suggested';
+      setTimeout(() => { if (status) status.textContent = ''; }, 2000);
+    }
+  } catch(e) {
+    if (status) status.textContent = '';
+  }
+}
+
+async function suggestEnglish() { autoFillEnglish(); }
 
 function openSyncModal() {
   document.getElementById('sync-url-input').value = scriptUrl;
@@ -2268,16 +2554,930 @@ function handleSyncTap() {
   syncFromSheet();
 }
 
+// ── SCRIPTS ──────────────────────────────────
+let scripts = [];
+let editingScriptId = null;
+let currentScriptId = null;
+let playerSentences = [];
+let playerIndex = 0;
+let playerPlaying = false;
+let playerSpeed = 0.5;
+let playerUtterance = null;
+let selectedScriptText = '';
+let selectedScriptRange = null;
+
+function loadScripts() {
+  const raw = localStorage.getItem('tarjetas-scripts');
+  if (raw) {
+    scripts = JSON.parse(raw);
+  } else {
+    scripts = [{
+      id: 'script-1',
+      title: 'Arrival — opening',
+      text: 'Solía pensar que este era el principio de tu historia. La memoria es extraña. No funciona como yo pensaba. Estamos tan limitados por el tiempo, por su orden. Vuelve conmigo. Recuerdo momentos en el medio. Y este era el final. Pero ahora no estoy tan seguro de creer en principios y finales. Hay días que definen tu historia más allá de tu vida. Como el día en que llegaron.',
+      listenCount: 0,
+      order: 0
+    }];
+    saveScripts();
+  }
+}
+function saveScripts() {
+  localStorage.setItem('tarjetas-scripts', JSON.stringify(scripts));
+}
+
+function renderScripts() {
+  const list = document.getElementById('script-list');
+  list.innerHTML = '';
+  if (!scripts.length) {
+    list.innerHTML = '<p style="color:var(--ink-2);font-size:14px;text-align:center;padding:40px 20px;">No scripts yet.<br>Tap ＋ to add one.</p>';
+    return;
+  }
+  scripts.forEach(script => {
+    const div = document.createElement('div');
+    div.className = 'script-card';
+    div.dataset.id = script.id;
+    div.innerHTML = `
+      <div class="script-card-inner">
+        <div class="script-card-text">
+          <h3>${esc(script.title)}</h3>
+          <div class="script-meta">${script.listenCount > 0 ? `Listened ${script.listenCount} time${script.listenCount !== 1 ? 's' : ''}` : 'New'}</div>
+        </div>
+        <button class="script-play-btn" data-action="play">
+          <svg width="11" height="13" viewBox="0 0 11 13" fill="none"><polygon points="1,0 11,6.5 1,13" fill="white"/></svg>
+        </button>
+      </div>
+    `;
+    div.querySelector('[data-action="play"]').addEventListener('click', e => {
+      e.stopPropagation();
+      startPlayer(script.id, e.currentTarget);
+    });
+    div.addEventListener('click', () => openEditScriptModal(script.id));
+    attachScriptDrag(div, script.id);
+    list.appendChild(div);
+  });
+}
+
+function openAddScriptModal() {
+  editingScriptId = null;
+  document.getElementById('modal-script-title').textContent = 'Add a script';
+  document.getElementById('script-title-input').value = '';
+  document.getElementById('script-text-input').value = '';
+  openModal('modal-script');
+  setTimeout(() => document.getElementById('script-title-input').focus(), 200);
+}
+
+function openEditScriptModal(id) {
+  const script = scripts.find(s => s.id === id);
+  if (!script) return;
+  editingScriptId = id;
+  document.getElementById('modal-script-title').textContent = 'Edit script';
+  document.getElementById('script-title-input').value = script.title;
+  document.getElementById('script-text-input').value = script.text;
+  openModal('modal-script');
+}
+
+function saveScript() {
+  const title = document.getElementById('script-title-input').value.trim();
+  const text = document.getElementById('script-text-input').value.trim();
+  if (!title) { showToast('Please enter a title'); return; }
+  if (!text) { showToast('Please paste some text'); return; }
+  if (editingScriptId) {
+    const s = scripts.find(s => s.id === editingScriptId);
+    if (s) { s.title = title; s.text = text; }
+  } else {
+    scripts.push({ id: uid(), title, text, listenCount: 0, order: scripts.length });
+  }
+  saveScripts(); renderScripts(); closeModal('modal-script');
+  showToast(editingScriptId ? 'Script updated' : 'Script saved!');
+}
+
+function attachScriptDrag(div, scriptId) {
+  let longPressTimer = null;
+  let dragging = false;
+  let ghost = null;
+  let ghostOffsetY = 0;
+  let dragCardH = 0;
+  let currentTargetId = null;
+  let startY = 0;
+  let liveTouchY = 0;
+  const cancelLong = () => clearTimeout(longPressTimer);
+
+  const beginDrag = (clientY) => {
+    dragging = true;
+    dragCardH = div.getBoundingClientRect().height;
+    div.classList.add('dragging');
+    const rect = div.getBoundingClientRect();
+    ghostOffsetY = clientY - rect.top;
+    ghost = div.cloneNode(true);
+    ghost.style.cssText = `position:fixed;left:${rect.left}px;width:${rect.width}px;top:${clientY-ghostOffsetY}px;z-index:999;opacity:0.85;pointer-events:none;box-shadow:var(--shadow-lg);border:1.5px solid var(--accent);border-radius:var(--radius);background:var(--surface);padding:16px 20px;`;
+    document.body.appendChild(ghost);
+  };
+  const moveDrag = (clientY) => {
+    if (!dragging) return;
+    ghost.style.top = (clientY - ghostOffsetY) + 'px';
+    const list = document.getElementById('script-list');
+    const fromIdx = scripts.findIndex(s => s.id === scriptId);
+    const rows = [...list.querySelectorAll('.script-card:not(.dragging)')];
+    let target = null;
+    for (const r of rows) {
+      const rect = r.getBoundingClientRect();
+      if (clientY < rect.top + rect.height/2) { target = r; break; }
+    }
+    const targetId = target ? target.dataset.id : '__end__';
+    if (targetId === currentTargetId) return;
+    currentTargetId = targetId;
+    const toIdx = target ? scripts.findIndex(s => s.id === target.dataset.id) : scripts.length;
+    rows.forEach(r => {
+      const rIdx = scripts.findIndex(s => s.id === r.dataset.id);
+      let shift = 0;
+      if (fromIdx < toIdx && rIdx > fromIdx && rIdx < toIdx) shift = -(dragCardH+12);
+      else if (fromIdx > toIdx && rIdx >= toIdx && rIdx < fromIdx) shift = dragCardH+12;
+      r.style.transition = 'transform 0.32s cubic-bezier(0.4,0,0.2,1)';
+      r.style.transform = shift ? `translateY(${shift}px)` : '';
+    });
+  };
+  const endDrag = (clientY) => {
+    if (!dragging) return;
+    dragging = false; currentTargetId = null;
+    div.classList.remove('dragging');
+    if (ghost) { ghost.remove(); ghost = null; }
+    const list = document.getElementById('script-list');
+    [...list.querySelectorAll('.script-card')].forEach(r => { r.style.transition='none'; r.style.transform=''; });
+    const rows = [...list.querySelectorAll('.script-card:not(.dragging)')];
+    let target = null;
+    for (const r of rows) {
+      const rect = r.getBoundingClientRect();
+      if (clientY < rect.top + rect.height/2) { target = r; break; }
+    }
+    const fromIdx = scripts.findIndex(s => s.id === scriptId);
+    if (target && target.dataset.id !== scriptId) {
+      const toIdx = scripts.findIndex(s => s.id === target.dataset.id);
+      if (toIdx !== -1) { const [m] = scripts.splice(fromIdx,1); scripts.splice(toIdx,0,m); saveScripts(); renderScripts(); }
+    } else if (!target && fromIdx !== scripts.length-1) {
+      const [m] = scripts.splice(fromIdx,1); scripts.push(m); saveScripts(); renderScripts();
+    }
+    setTimeout(() => { dragging = false; }, 0);
+  };
+
+  div.addEventListener('mousedown', e => {
+    if (e.target.closest('button')) return;
+    startY = e.clientY;
+    longPressTimer = setTimeout(() => {
+      beginDrag(e.clientY);
+      const onMove = e => moveDrag(e.clientY);
+      const onUp = e => { endDrag(e.clientY); window.removeEventListener('mousemove',onMove); window.removeEventListener('mouseup',onUp); };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    }, 500);
+  });
+  div.addEventListener('mouseup', cancelLong);
+  div.addEventListener('mouseleave', cancelLong);
+  div.addEventListener('touchstart', e => {
+    if (e.target.closest('button')) return;
+    startY = e.touches[0].clientY; liveTouchY = startY;
+    longPressTimer = setTimeout(() => {
+      beginDrag(liveTouchY);
+      const onMove = e => { e.preventDefault(); liveTouchY=e.touches[0].clientY; moveDrag(liveTouchY); };
+      const onEnd = e => { endDrag(e.changedTouches[0].clientY); document.removeEventListener('touchmove',onMove); document.removeEventListener('touchend',onEnd); };
+      document.addEventListener('touchmove', onMove, { passive:false });
+      document.addEventListener('touchend', onEnd);
+    }, 500);
+  }, { passive:true });
+  div.addEventListener('touchmove', e => { liveTouchY=e.touches[0].clientY; if(Math.abs(liveTouchY-startY)>12) cancelLong(); }, { passive:true });
+  div.addEventListener('touchend', cancelLong);
+  div.addEventListener('touchcancel', cancelLong);
+}
+
+// ── SCRIPT PLAYER ──────────────────────────
+function sentenceSplit(text) {
+  return text.match(/[^.!?¡¿]+[.!?¡¿]*/g)?.map(s => s.trim()).filter(Boolean) || [text];
+}
+
+function startPlayer(scriptId, playBtn) {
+  // Press animation on the card's play button
+  if (playBtn) {
+    playBtn.classList.add('pressed');
+    setTimeout(() => playBtn.classList.remove('pressed'), 300);
+  }
+
+  const script = scripts.find(s => s.id === scriptId);
+  if (!script) return;
+  currentScriptId = scriptId;
+  playerSentences = sentenceSplit(script.text);
+  playerIndex = 0;
+  playerPlaying = false;
+  playerSpeed = 0.5;
+  document.getElementById('player-title').textContent = script.title;
+
+  // Update speed buttons
+  document.querySelectorAll('.speed-btn').forEach(b => {
+    b.classList.remove('active');
+  });
+  // Animate player in after short delay
+  setTimeout(() => {
+    showScreen('script-player');
+    const playerEl = document.getElementById('script-player');
+    playerEl.classList.remove('slide-in');
+    void playerEl.offsetWidth; // force reflow
+    playerEl.classList.add('slide-in');
+    renderPlayerText();
+    setPlayerIcon(false);
+  }, 150);
+}
+
+function exitPlayer() {
+  stopPlayerSpeech();
+  playerPlaying = false;
+  selectionModeActive = false;
+  showScreen('home');
+  if (currentView !== 'scripts') switchToView('scripts');
+}
+
+let allWords = [];
+let isSelecting = false;
+let selectionStart = -1;
+let selectionEnd = -1;
+
+function renderPlayerText() {
+  const area = document.getElementById('player-text-area');
+  area.innerHTML = '';
+  allWords = [];
+
+  playerSentences.forEach((s, si) => {
+    const words = s.split(/(\s+)/);
+    words.forEach(w => {
+      if (/^\s+$/.test(w)) {
+        area.appendChild(document.createTextNode(w));
+      } else {
+        const span = document.createElement('span');
+        const stateClass = si < playerIndex ? 'done' : 'upcoming';
+        span.className = 'player-sentence player-word ' + stateClass;
+        span.dataset.si = si;
+        span.dataset.wi = allWords.length;
+        span.textContent = w;
+        span.style.cssText = 'display:inline;border-radius:3px;padding:1px 0;transition:background 0.1s;pointer-events:auto;cursor:pointer;-webkit-user-select:none;user-select:none;';
+        const capturedSi = si;
+        span.addEventListener('click', () => {
+          if (selectionModeActive || isSelecting) return;
+          stopPlayerSpeech();
+          playerPlaying = false;
+          setPlayerIcon(false);
+          playerIndex = capturedSi;
+          updatePlayerHighlight();
+          // Scroll to this sentence
+          const area = document.getElementById('player-text-area');
+          if (area) {
+            const areaRect = area.getBoundingClientRect();
+            const spanRect = span.getBoundingClientRect();
+            const targetScroll = area.scrollTop + (spanRect.top - areaRect.top) - area.clientHeight * 0.35;
+            area.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
+          }
+          // Wait 1s then play
+          setTimeout(() => {
+            playerPlaying = true;
+            setPlayerIcon(true);
+            speakCurrent();
+          }, 1000);
+        });
+        allWords.push({ span, si, word: w });
+        area.appendChild(span);
+      }
+    });
+    area.appendChild(document.createTextNode(' '));
+  });
+
+  setupWordSelection(area);
+  updateProgress();
+}
+
+function updatePlayerHighlight() {
+  allWords.forEach(({span, si}) => {
+    // Only show 'active' orange via word-by-word coloring, not here
+    const stateClass = si < playerIndex ? 'done' : 'upcoming';
+    span.className = 'player-sentence player-word ' + stateClass;
+    span.style.color = '';
+    span.style.fontWeight = '';
+  });
+  const active = document.querySelector('.player-sentence.active');
+  if (active) {
+    const area = document.getElementById('player-text-area');
+    if (area) {
+      const areaRect = area.getBoundingClientRect();
+      const elRect = active.getBoundingClientRect();
+      const elCenter = elRect.top - areaRect.top + area.scrollTop;
+      // Only scroll if element is in the bottom 40% of visible area
+      const visibleBottom = area.scrollTop + area.clientHeight * 0.6;
+      if (elCenter > visibleBottom) {
+        // Jump by ~3 line heights at a time
+        const lineH = elRect.height * 3.5;
+        area.scrollTo({ top: area.scrollTop + lineH, behavior: 'smooth' });
+      }
+    }
+  }
+  updateProgress();
+}
+
+function updateProgress() {
+  const pct = playerSentences.length ? (playerIndex / playerSentences.length * 100) : 0;
+  const fill = document.getElementById('player-progress-fill');
+  if (fill) fill.style.width = pct + '%';
+}
+
+function setPlayerIcon(playing) {
+  const icon = document.getElementById('player-play-icon');
+  if (!icon) return;
+  if (playing) {
+    icon.innerHTML = '<rect x="4" y="3" width="5" height="16" rx="1.5" fill="#1A1814"/><rect x="13" y="3" width="5" height="16" rx="1.5" fill="#1A1814"/>';
+  } else {
+    icon.innerHTML = '<polygon points="5,2 19,11 5,20" fill="#1A1814"/>';
+  }
+}
+
+function togglePlayer() {
+  const btn = document.getElementById('player-play-btn');
+  if (btn) { btn.classList.add('pressed'); setTimeout(() => btn.classList.remove('pressed'), 300); }
+  if (playerPlaying) {
+    playerPlaying = false;
+    stopPlayerSpeech();
+    setPlayerIcon(false);
+  } else {
+    // Deactivate selection mode if active
+    if (selectionModeActive) resetSelectionMode();
+    // If finished, restart from beginning
+    if (playerIndex >= playerSentences.length) {
+      playerIndex = 0;
+      updatePlayerHighlight();
+      const area = document.getElementById('player-text-area');
+      if (area) area.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    playerPlaying = true;
+    setPlayerIcon(true);
+    speakCurrent();
+  }
+}
+
+let currentWordTimer = null;
+let keepAliveInterval = null;
+
+function speakCurrent() {
+  if (playerIndex >= playerSentences.length) {
+    playerPlaying = false;
+    setPlayerIcon(false);
+    const script = scripts.find(s => s.id === currentScriptId);
+    if (script) { script.listenCount = (script.listenCount||0) + 1; saveScripts(); renderScripts(); }
+    showToast('¡Muy bien! Finished.');
+    return;
+  }
+  stopPlayerSpeech();
+  const sentence = playerSentences[playerIndex];
+  const sentenceWords = allWords.filter(w => w.si === playerIndex);
+
+  // Split into small chunks (~35 chars) to prevent iOS cutting off
+  const chunks = splitIntoChunks(sentence, 35);
+  let chunkIdx = 0;
+  let globalWordIdx = 0;
+  let boundaryFired = false;
+
+  const speakChunk = () => {
+    if (!playerPlaying || chunkIdx >= chunks.length) {
+      if (playerPlaying) nextSentence();
+      return;
+    }
+    const chunk = chunks[chunkIdx];
+    const chunkWordCount = chunk.trim().split(/\s+/).filter(Boolean).length;
+    const utt = new SpeechSynthesisUtterance(chunk);
+    utt.lang = 'es-ES';
+    utt.rate = playerSpeed;
+    const voices = window.speechSynthesis.getVoices();
+    const pref = voices.find(v => v.lang.startsWith('es') && !v.name.includes('Google'));
+    if (pref) utt.voice = pref;
+    playerUtterance = utt;
+
+    // Keep-alive ping every 8s
+    keepAliveInterval = setInterval(() => {
+      if (!window.speechSynthesis.speaking) { clearInterval(keepAliveInterval); return; }
+      window.speechSynthesis.pause();
+      window.speechSynthesis.resume();
+    }, 8000);
+
+    // Boundary events (Chrome desktop)
+    utt.onboundary = e => {
+      if (e.name !== 'word') return;
+      boundaryFired = true;
+      const spokenCount = chunk.slice(0, e.charIndex).trim().split(/\s+/).filter(Boolean).length;
+      highlightCurrentWord(playerIndex, globalWordIdx + spokenCount);
+    };
+
+    // Time-based fallback (mobile)
+    let wi = globalWordIdx;
+    const msPerWord = (chunk.length / Math.max(playerSpeed, 0.1)) * 55 / Math.max(chunkWordCount, 1);
+    const wordTick = () => {
+      if (boundaryFired || !playerPlaying || wi >= globalWordIdx + chunkWordCount) return;
+      highlightCurrentWord(playerIndex, wi);
+      wi++;
+      currentWordTimer = setTimeout(wordTick, msPerWord);
+    };
+    setTimeout(() => { if (!boundaryFired) wordTick(); }, 120);
+
+    const fallbackMs = Math.max(1200, chunk.length * 95 / Math.max(playerSpeed, 0.1));
+    const fallback = setTimeout(() => {
+      clearInterval(keepAliveInterval);
+      if (playerPlaying) { globalWordIdx += chunkWordCount; chunkIdx++; speakChunk(); }
+    }, fallbackMs + 500);
+
+    utt.onend = () => {
+      clearTimeout(fallback);
+      clearInterval(keepAliveInterval);
+      clearTimeout(currentWordTimer);
+      globalWordIdx += chunkWordCount;
+      chunkIdx++;
+      if (playerPlaying) speakChunk();
+    };
+
+    utt.onerror = () => {
+      clearTimeout(fallback);
+      clearInterval(keepAliveInterval);
+      setTimeout(() => { if (playerPlaying) speakChunk(); }, 250);
+    };
+
+    window.speechSynthesis.speak(utt);
+  };
+
+  speakChunk();
+  // Only scroll to active sentence, don't reset word colors
+  scrollToActiveSentence();
+}
+
+function scrollToActiveSentence() {
+  const area = document.getElementById('player-text-area');
+  if (!area) return;
+  // Find first word of active sentence
+  const firstActive = allWords.find(w => w.si === playerIndex);
+  if (!firstActive) return;
+  const elRect = firstActive.span.getBoundingClientRect();
+  const areaRect = area.getBoundingClientRect();
+  const elTop = elRect.top - areaRect.top + area.scrollTop;
+  const visibleBottom = area.scrollTop + area.clientHeight * 0.6;
+  if (elTop > visibleBottom) {
+    const lineH = elRect.height * 3.5;
+    area.scrollTo({ top: area.scrollTop + lineH, behavior: 'smooth' });
+  }
+}
+
+function highlightCurrentWord(si, wordOffset) {
+  // Find start index of this sentence's words in allWords
+  let count = 0;
+  allWords.forEach(w => {
+    if (w.si < si) return;
+    if (w.si > si) { w.span.style.color = ''; return; }
+    // same sentence
+    if (count < wordOffset) {
+      // already spoken — grey
+      w.span.style.color = 'rgba(255,255,255,0.28)';
+    } else if (count === wordOffset) {
+      // current word — orange
+      w.span.style.color = '#D4580A';
+      w.span.style.fontWeight = '600';
+    } else {
+      // upcoming — white
+      w.span.style.color = '#fff';
+      w.span.style.fontWeight = '400';
+    }
+    count++;
+  });
+}
+
+function splitIntoChunks(text, maxChars) {
+  const parts = text.match(/[^,;:.!?¡¿]+[,;:.!?¡¿]*/g) || [text];
+  const chunks = [];
+  let current = '';
+  for (const part of parts) {
+    if (current.length + part.length > maxChars && current.length > 0) {
+      chunks.push(current.trim());
+      current = part;
+    } else {
+      current += part;
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks.length ? chunks : [text];
+}
+
+function nextSentence() {
+  const prevIdx = playerIndex;
+  playerIndex++;
+  // Grey out all words from completed sentence without touching new sentence
+  allWords.forEach(w => {
+    if (w.si === prevIdx) {
+      w.span.style.color = 'rgba(255,255,255,0.28)';
+      w.span.style.fontWeight = '400';
+      w.span.className = 'player-sentence player-word done';
+    }
+  });
+  updateProgress();
+  if (playerIndex >= playerSentences.length) {
+    speakCurrent();
+  } else {
+    speakCurrent();
+  }
+}
+
+function playerPrevSentence() {
+  stopPlayerSpeech();
+  playerIndex = Math.max(0, playerIndex - 1);
+  updatePlayerHighlight();
+  if (playerPlaying) speakCurrent();
+}
+
+function stopPlayerSpeech() {
+  window.speechSynthesis && window.speechSynthesis.cancel();
+  clearTimeout(currentWordTimer);
+  clearInterval(keepAliveInterval);
+  playerUtterance = null;
+}
+
+function setSpeed(s) {
+  const newSpeed = (playerSpeed === s) ? 0.6 : s;
+  playerSpeed = newSpeed;
+  document.querySelectorAll('.speed-btn').forEach(b => {
+    const bSpeed = parseFloat(b.dataset.speed);
+    b.classList.toggle('active', bSpeed === newSpeed && newSpeed !== 0.6);
+    b.style.animation = (bSpeed === s) ? 'btnPress 0.3s ease' : '';
+    if (bSpeed === s) b.addEventListener('animationend', () => { b.style.animation = ''; }, { once: true });
+  });
+  if (playerPlaying) { stopPlayerSpeech(); speakCurrent(); }
+}
+
+// ── WORD SELECTION & FLASHCARD POPUP ──────────
+function setupPlayerTextSelection() { /* handled per renderPlayerText */ }
+
+let selectionModeActive = false;
+
+function toggleSelectionMode() {
+  selectionModeActive = !selectionModeActive;
+  const btn = document.getElementById('player-add-btn');
+  if (btn) {
+    btn.style.animation = 'btnPress 0.3s ease';
+    btn.addEventListener('animationend', () => { btn.style.animation = ''; }, { once: true });
+    btn.style.color = selectionModeActive ? '#fff' : 'rgba(255,255,255,0.5)';
+    btn.style.fontWeight = selectionModeActive ? '700' : '400';
+  }
+  if (selectionModeActive) {
+    // Pause playback when entering selection mode
+    playerPlaying = false;
+    stopPlayerSpeech();
+    setPlayerIcon(false);
+    showToast('Hold a word to select');
+  }
+}
+
+function showAddToCardHint() {
+  toggleSelectionMode();
+}
+
+function wordIdxAt(x, y) {
+  // Try elementFromPoint first
+  const el = document.elementFromPoint(x, y);
+  if (el && el.dataset && el.dataset.wi !== undefined) return parseInt(el.dataset.wi);
+  if (el) {
+    const p = el.closest ? el.closest('[data-wi]') : null;
+    if (p) return parseInt(p.dataset.wi);
+  }
+  // Fallback: find closest word span by bounding rect
+  let closest = -1, minDist = Infinity;
+  allWords.forEach(({span}, i) => {
+    const r = span.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) return;
+    const cx = Math.max(r.left, Math.min(x, r.right));
+    const cy = Math.max(r.top, Math.min(y, r.bottom));
+    const dist = Math.hypot(x - cx, y - cy);
+    if (dist < minDist) { minDist = dist; closest = i; }
+  });
+  return minDist < 60 ? closest : -1;
+}
+
+function highlightRange(lo, hi) {
+  const a = Math.min(lo, hi), b = Math.max(lo, hi);
+  allWords.forEach(({span}, i) => {
+    span.style.background = (i >= a && i <= b) ? 'rgba(212,88,10,0.45)' : '';
+  });
+}
+
+function clearHighlight() {
+  allWords.forEach(({span}) => { span.style.background = ''; });
+}
+
+function setupWordSelection(area) {
+  let touchTimer = null;
+
+  let tapX = 0, tapY = 0;
+
+  // TOUCH
+  area.addEventListener('touchstart', e => {
+    tapX = e.touches[0].clientX;
+    tapY = e.touches[0].clientY;
+    if (!selectionModeActive) return;
+    const idx = wordIdxAt(tapX, tapY);
+    if (idx < 0) return;
+    touchTimer = setTimeout(() => {
+      isSelecting = true;
+      selectionStart = idx;
+      selectionEnd = idx;
+      highlightRange(idx, idx);
+    }, 900);
+  }, { passive: true });
+
+  area.addEventListener('touchmove', e => {
+    clearTimeout(touchTimer);
+    if (!isSelecting) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    const idx = wordIdxAt(t.clientX, t.clientY);
+    if (idx >= 0) { selectionEnd = idx; highlightRange(selectionStart, selectionEnd); }
+  }, { passive: false });
+
+  area.addEventListener('touchend', e => {
+    clearTimeout(touchTimer);
+    if (isSelecting) {
+      isSelecting = false;
+      const lo = Math.min(selectionStart, selectionEnd);
+      const hi = Math.max(selectionStart, selectionEnd);
+      const text = allWords.slice(lo, hi+1).map(w => w.word).join(' ').trim();
+      clearHighlight();
+      if (text.length > 1) showFlashcardPopup(text);
+      return;
+    }
+    // Simple tap — only handle if NOT in selection mode
+    if (selectionModeActive) return;
+    const idx = wordIdxAt(tapX, tapY);
+    if (idx < 0) return;
+    const si = allWords[idx].si;
+    stopPlayerSpeech();
+    playerPlaying = false;
+    setPlayerIcon(false);
+    playerIndex = si;
+    updatePlayerHighlight();
+    // Scroll to tapped sentence
+    const firstWord = allWords.find(w => w.si === si);
+    if (firstWord) {
+      const areaRect = area.getBoundingClientRect();
+      const wordRect = firstWord.span.getBoundingClientRect();
+      const targetScroll = area.scrollTop + (wordRect.top - areaRect.top) - area.clientHeight * 0.35;
+      area.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
+    }
+    // Wait 1s then start playing
+    setTimeout(() => {
+      playerPlaying = true;
+      setPlayerIcon(true);
+      speakCurrent();
+    }, 1000);
+  });
+
+  // MOUSE (desktop)
+  area.addEventListener('mousedown', e => {
+    if (!selectionModeActive) return;
+    const idx = wordIdxAt(e.clientX, e.clientY);
+    if (idx < 0) return;
+    isSelecting = true;
+    selectionStart = idx;
+    selectionEnd = idx;
+    highlightRange(idx, idx);
+  });
+  area.addEventListener('mousemove', e => {
+    if (!isSelecting || !e.buttons) return;
+    const idx = wordIdxAt(e.clientX, e.clientY);
+    if (idx >= 0) { selectionEnd = idx; highlightRange(selectionStart, selectionEnd); }
+  });
+  window.addEventListener('mouseup', e => {
+    if (!isSelecting) return;
+    isSelecting = false;
+    const lo = Math.min(selectionStart, selectionEnd);
+    const hi = Math.max(selectionStart, selectionEnd);
+    const text = allWords.slice(lo, hi+1).map(w => w.word).join(' ').trim();
+    clearHighlight();
+    if (text.length > 1 && document.getElementById('script-player')?.classList.contains('active')) {
+      showFlashcardPopup(text);
+    }
+  });
+}
+
+async function showFlashcardPopup(spanishText) {
+  // Remove any existing popup
+  const existing = document.getElementById('fc-popup-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'fc-popup-overlay';
+  overlay.id = 'fc-popup-overlay';
+
+  overlay.innerHTML = `
+    <div class="fc-popup">
+      <div style="font-size:10px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px;">Save as flashcard</div>
+      <div class="form-group">
+        <label>Spanish</label>
+        <input type="text" id="fc-es" value="${spanishText.replace(/"/g,'&quot;')}" style="font-style:italic;" />
+      </div>
+      <div class="form-group">
+        <label>English <span style="font-style:italic;font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-3);font-size:10px;">· suggested</span></label>
+        <input type="text" id="fc-en" placeholder="Translating…" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="dismissFcPopup()">Dismiss</button>
+        <button class="btn-primary" onclick="saveFcCard()">Save to deck</button>
+      </div>
+    </div>
+  `;
+
+  overlay.addEventListener('click', e => { if (e.target === overlay) dismissFcPopup(); });
+  document.body.appendChild(overlay);
+
+  // Translate via Apps Script
+  if (scriptUrl) {
+    try {
+      const res = await fetch(scriptUrl + '?action=translate&text=' + encodeURIComponent(spanishText));
+      const data = await res.json();
+      const enInput = document.getElementById('fc-en');
+      if (enInput && data.ok && data.spanish) enInput.value = data.spanish;
+      else if (enInput) enInput.placeholder = 'Translation failed — type manually';
+    } catch(e) {
+      const enInput = document.getElementById('fc-en');
+      if (enInput) enInput.placeholder = 'Translation failed — type manually';
+    }
+  } else {
+    const enInput = document.getElementById('fc-en');
+    if (enInput) enInput.placeholder = 'Connect Sheet for auto-translation';
+  }
+}
+
+function resetSelectionMode() {
+  selectionModeActive = false;
+  const btn = document.getElementById('player-add-btn');
+  if (btn) { btn.style.color = 'rgba(255,255,255,0.5)'; btn.style.fontWeight = '400'; }
+}
+
+function dismissFcPopup() {
+  const el = document.getElementById('fc-popup-overlay');
+  if (el) el.remove();
+  resetSelectionMode();
+}
+
+function saveFcCard() {
+  const es = document.getElementById('fc-es')?.value.trim();
+  const en = document.getElementById('fc-en')?.value.trim();
+  if (!es || !en) { showToast('Fill in both fields'); return; }
+
+  const script = scripts.find(s => s.id === currentScriptId);
+  const deckName = script ? script.title : 'Scripts';
+
+  // Find or create deck with script title
+  let deck = decks.find(d => d.name === deckName);
+  if (!deck) {
+    deck = { id: uid(), name: deckName, lastStudied: null, cards: [] };
+    decks.push(deck);
+  }
+
+  deck.cards.push({ id: uid(), en, es, ctx: '' });
+  save(); renderHome();
+  dismissFcPopup();
+  resetSelectionMode();
+  showToast(`Saved to "${deckName}"!`);
+}
+
+// ── CURRENT VIEW ─────────────────────────────
+let currentView = 'decks'; // 'decks' | 'scripts'
+
+function switchToView(view) {
+  if (currentView === view) return;
+  currentView = view;
+  const isScripts = view === 'scripts';
+
+  // 1. Fade out subtitle
+  const subtitle = document.getElementById('header-subtitle');
+  subtitle.style.opacity = '0';
+
+  setTimeout(() => {
+    // 2. Swap subtitle text
+    subtitle.textContent = isScripts ? 'scripts' : 'flash cards';
+    subtitle.style.opacity = '1';
+
+    // 3. Update + button action
+    const addBtn = document.getElementById('header-add-btn');
+    addBtn.onclick = isScripts ? openAddScriptModal : openAddDeckModal;
+    addBtn.title = isScripts ? 'New script' : 'New deck';
+
+    // 4. Animate pills
+    const pillsRow = document.getElementById('pills-row');
+    pillsRow.style.opacity = '0';
+    setTimeout(() => {
+      if (isScripts) {
+        pillsRow.innerHTML = '<button class="filter-pill active">All</button>';
+      } else {
+        pillsRow.innerHTML = `
+          <button class="filter-pill active" data-filter="all" onclick="setFilter('all')">All</button>
+          <button class="filter-pill" data-filter="situations" onclick="setFilter('situations')">Situations</button>
+          <button class="filter-pill" data-filter="verbs" onclick="setFilter('verbs')">Verbs</button>
+        `;
+      }
+      // Stagger pills fade in (no slide)
+      const pills = pillsRow.querySelectorAll('.filter-pill');
+      pills.forEach((p, i) => {
+        p.style.opacity = '0';
+        p.style.transition = `opacity 0.4s ${i * 0.15}s ease`;
+        setTimeout(() => { p.style.opacity = '1'; }, 20);
+      });
+      pillsRow.style.opacity = '1';
+    }, 150);
+
+    // 5. Swap content with staggered card animation
+    const deckWrap = document.getElementById('deck-list-wrap');
+    const scriptWrap = document.getElementById('script-list-wrap');
+
+    if (isScripts) {
+      deckWrap.style.display = 'none';
+      scriptWrap.style.display = 'block';
+      animateCardsIn('script-list');
+    } else {
+      scriptWrap.style.display = 'none';
+      deckWrap.style.display = 'block';
+      animateCardsIn('deck-list');
+    }
+
+    // 6. Update nav dots
+    updateNavDots(isScripts ? 'scripts' : 'home');
+
+  }, 200);
+}
+
+function animateCardsIn(listId) {
+  const list = document.getElementById(listId);
+  if (!list) return;
+  const cards = list.querySelectorAll('.deck-card, .script-card');
+  cards.forEach((card, i) => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateX(-20px)';
+    card.style.transition = `opacity 0.3s ${i * 0.07}s ease, transform 0.3s ${i * 0.07}s ease`;
+    setTimeout(() => { card.style.opacity = '1'; card.style.transform = ''; }, 20);
+  });
+}
+
+// ── SWIPE HOME ↔ SCRIPTS ───────────────────
+function setupHomeSwipe() {
+  let startX = 0, startY = 0;
+  const threshold = 60;
+  const el = document.getElementById('home');
+  if (!el) return;
+
+  // Touch
+  el.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive:true });
+  el.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    if (Math.abs(dx) < Math.abs(dy) * 0.8) return;
+    if (Math.abs(dx) < threshold) return;
+    if (dx < 0 && currentView === 'decks') switchToView('scripts');
+    if (dx > 0 && currentView === 'scripts') switchToView('decks');
+  }, { passive:true });
+
+  // Mouse drag (desktop)
+  let mouseStartX = 0;
+  let mouseDragging = false;
+  el.addEventListener('mousedown', e => {
+    if (e.target.closest('button,input,select,textarea,.deck-card,.script-card')) return;
+    mouseStartX = e.clientX;
+    mouseDragging = true;
+  });
+  window.addEventListener('mouseup', e => {
+    if (!mouseDragging) return;
+    mouseDragging = false;
+    const dx = e.clientX - mouseStartX;
+    if (Math.abs(dx) < threshold) return;
+    if (dx < 0 && currentView === 'decks') switchToView('scripts');
+    if (dx > 0 && currentView === 'scripts') switchToView('decks');
+  });
+}
+
+function updateNavDots(activeScreen) {
+  document.querySelectorAll('.nav-dot').forEach(d => {
+    d.style.background = d.dataset.screen === activeScreen ? 'var(--accent)' : 'var(--border)';
+  });
+}
+
 // ── INIT ──
 load();
+loadScripts();
+showScreen('home');
 renderHome();
+renderScripts();
+setupHomeSwipe();
+setTimeout(setupPlayerTextSelection, 500);
 if (scriptUrl) {
   setSyncStatus('idle');
   syncFromSheet();
 }
-
-// ── SERVICE WORKER ──
-if ('serviceWorker' in navigator) {
+if ('serviceWorker' in navigator && location.hostname === 'tarjetas-adam.github.io') {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/tarjetas/sw.js')
       .catch(err => console.log('SW registration failed:', err));
