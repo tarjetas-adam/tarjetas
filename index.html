@@ -624,6 +624,26 @@
     animation: playerSlideIn 0.4s cubic-bezier(0.4,0,0.2,1) both;
   }
 
+  /* Deck card and button press animations */
+  .deck-card:active {
+    animation: btnPress 0.25s ease;
+  }
+  .btn-primary:active {
+    animation: btnPress 0.25s ease;
+  }
+  .script-play-btn:active {
+    animation: btnPress 0.25s ease;
+  }
+
+  /* Screen slide-in animations */
+  @keyframes screenSlideUp {
+    from { opacity: 0; transform: translateY(32px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  #study.slide-in, #autoplay.slide-in {
+    animation: screenSlideUp 0.35s cubic-bezier(0.4,0,0.2,1) both;
+  }
+
   .script-card {
     background: var(--surface);
     border-radius: var(--radius);
@@ -2453,10 +2473,16 @@ function shuffle(arr) {
 }
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+  const el = document.getElementById(id);
+  el.classList.add('active');
+  // Animate screens that slide in
+  if (id === 'study' || id === 'autoplay') {
+    el.classList.remove('slide-in');
+    void el.offsetWidth;
+    el.classList.add('slide-in');
+  }
   const dots = document.getElementById('nav-dots');
   if (dots) dots.style.display = (id === 'home') ? 'flex' : 'none';
-  // Animate cards when returning to home
   if (id === 'home') {
     const listId = currentView === 'scripts' ? 'script-list' : 'deck-list';
     setTimeout(() => animateCardsIn(listId), 50);

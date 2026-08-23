@@ -1,4 +1,4 @@
-const CACHE = 'tarjetas-v1';
+const CACHE = 'tarjetas-v2';
 const ASSETS = [
   '/tarjetas/',
   '/tarjetas/index.html',
