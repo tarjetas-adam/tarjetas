@@ -3000,14 +3000,14 @@ function speakCurrent() {
 
     // Time-based fallback (mobile)
     let wi = globalWordIdx;
-    const msPerWord = (chunk.length / Math.max(playerSpeed, 0.1)) * 55 / Math.max(chunkWordCount, 1);
+    const msPerWord = (chunk.length / Math.max(playerSpeed, 0.1)) * 75 / Math.max(chunkWordCount, 1);
     const wordTick = () => {
       if (boundaryFired || !playerPlaying || wi >= globalWordIdx + chunkWordCount) return;
       highlightCurrentWord(playerIndex, wi);
       wi++;
       currentWordTimer = setTimeout(wordTick, msPerWord);
     };
-    setTimeout(() => { if (!boundaryFired) wordTick(); }, 120);
+    setTimeout(() => { if (!boundaryFired) wordTick(); }, 200);
 
     const fallbackMs = Math.max(1200, chunk.length * 95 / Math.max(playerSpeed, 0.1));
     const fallback = setTimeout(() => {
