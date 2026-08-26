@@ -2402,7 +2402,6 @@ function openEditWordModal(deckId, cardId) {
   editingWordId = cardId;
   document.getElementById('edit-word-en-input').value = card.en;
   document.getElementById('edit-word-es-input').value = card.es;
-  document.getElementById('edit-word-ctx-input').value = card.ctx || '';
   openModal('modal-edit-word');
   setTimeout(() => document.getElementById('edit-word-en-input').focus(), 200);
 }
