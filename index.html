@@ -2055,61 +2055,42 @@ function getVoice(lang) {
       || null;
 }
 
-function chunkText(text) {
-  // Split on punctuation boundaries, keeping chunks under 100 chars
-  const parts = text.match(/[^,;:.!?¿¡]+[,;:.!?¿¡]*/g) || [text];
-  const chunks = [];
-  let current = '';
-  for (const part of parts) {
-    if ((current + part).length > 80 && current.length > 0) {
-      chunks.push(current.trim());
-      current = part;
-    } else {
-      current += part;
-    }
-  }
-  if (current.trim()) chunks.push(current.trim());
-  return chunks.length ? chunks : [text];
-}
-
-function speakChunks(chunks, lang, onEnd) {
+function speakTextWithCallback(text, lang, onEnd) {
   if (!window.speechSynthesis) { onEnd && onEnd(); return; }
-  if (!chunks.length) { onEnd && onEnd(); return; }
-  const [first, ...rest] = chunks;
-  const utt = new SpeechSynthesisUtterance(first);
-  utt.lang = lang === 'es' ? 'es-ES' : 'en-US';
-  utt.rate = 0.85;
-  const voice = getVoice(lang);
-  if (voice) utt.voice = voice;
-  const fallbackMs = Math.max(1500, first.length * 90);
-  let done = false;
-  const fallback = setTimeout(() => {
-    if (done) return;
-    done = true;
-    speakChunks(rest, lang, onEnd);
-  }, fallbackMs);
-  utt.onend = () => {
-    if (done) return;
-    done = true;
-    clearTimeout(fallback);
-    speakChunks(rest, lang, onEnd);
-  };
-  window.speechSynthesis.speak(utt);
+  window.speechSynthesis.cancel();
+  setTimeout(() => {
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = lang === 'es' ? 'es-ES' : 'en-US';
+    utt.rate = 0.85;
+    const voice = getVoice(lang);
+    if (voice) utt.voice = voice;
+    let done = false;
+    const finish = () => { if (!done) { done = true; onEnd && onEnd(); } };
+    // Watchdog in case onend never fires
+    const watchdog = setTimeout(finish, Math.max(2000, text.length * 120));
+    utt.onend = () => { clearTimeout(watchdog); finish(); };
+    utt.onerror = e => {
+      clearTimeout(watchdog);
+      if (e.error === 'interrupted') return;
+      setTimeout(finish, 300);
+    };
+    window.speechSynthesis.speak(utt);
+  }, 50);
 }
 
 function speakText(text, lang) {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
-  const chunks = chunkText(text);
-  speakChunks(chunks, lang, null);
+  setTimeout(() => {
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = lang === 'es' ? 'es-ES' : 'en-US';
+    utt.rate = 0.85;
+    const voice = getVoice(lang);
+    if (voice) utt.voice = voice;
+    window.speechSynthesis.speak(utt);
+  }, 50);
 }
 
-function speakTextWithCallback(text, lang, onEnd) {
-  if (!window.speechSynthesis) { onEnd && onEnd(); return; }
-  window.speechSynthesis.cancel();
-  const chunks = chunkText(text);
-  speakChunks(chunks, lang, onEnd);
-}
 function speakSpanishAuto(es) { speakText(es, 'es'); }
 function speakSpanish(e, es) { e.stopPropagation(); speakText(es, 'es'); }
 window.speechSynthesis && window.speechSynthesis.getVoices();
@@ -2955,82 +2936,71 @@ function speakCurrent() {
     return;
   }
   stopPlayerSpeech();
-  const sentence = playerSentences[playerIndex];
-  const sentenceWords = allWords.filter(w => w.si === playerIndex);
+  if (!playerPlaying) return;
 
-  // Split into small chunks (~35 chars) to prevent iOS cutting off
-  const chunks = splitIntoChunks(sentence, 35);
-  let chunkIdx = 0;
-  let globalWordIdx = 0;
+  const sentence = playerSentences[playerIndex];
+  const words = allWords.filter(w => w.si === playerIndex);
+  const wordCount = words.length;
   let boundaryFired = false;
 
-  const speakChunk = () => {
-    if (!playerPlaying || chunkIdx >= chunks.length) {
-      if (playerPlaying) nextSentence();
-      return;
-    }
-    const chunk = chunks[chunkIdx];
-    const chunkWordCount = chunk.trim().split(/\s+/).filter(Boolean).length;
-    const utt = new SpeechSynthesisUtterance(chunk);
-    utt.lang = 'es-ES';
-    utt.rate = playerSpeed;
-    const voices = window.speechSynthesis.getVoices();
-    const pref = voices.find(v => v.lang.startsWith('es') && !v.name.includes('Google'));
-    if (pref) utt.voice = pref;
-    playerUtterance = utt;
+  const utt = new SpeechSynthesisUtterance(sentence);
+  utt.lang = 'es-ES';
+  utt.rate = playerSpeed;
 
-    // Keep-alive ping every 8s
-    keepAliveInterval = setInterval(() => {
-      if (!window.speechSynthesis.speaking) { clearInterval(keepAliveInterval); return; }
-      window.speechSynthesis.pause();
-      window.speechSynthesis.resume();
-    }, 8000);
+  // Pick Spanish voice
+  const voices = window.speechSynthesis.getVoices();
+  const pref = voices.find(v => v.lang === 'es-ES' || v.lang === 'es_ES') ||
+               voices.find(v => v.lang.startsWith('es'));
+  if (pref) utt.voice = pref;
+  playerUtterance = utt;
 
-    // Boundary events (Chrome desktop)
-    utt.onboundary = e => {
-      if (e.name !== 'word') return;
-      boundaryFired = true;
-      const spokenCount = chunk.slice(0, e.charIndex).trim().split(/\s+/).filter(Boolean).length;
-      highlightCurrentWord(playerIndex, globalWordIdx + spokenCount);
-    };
-
-    // Time-based fallback (mobile)
-    let wi = globalWordIdx;
-    const msPerWord = (chunk.length / Math.max(playerSpeed, 0.1)) * 75 / Math.max(chunkWordCount, 1);
-    const wordTick = () => {
-      if (boundaryFired || !playerPlaying || wi >= globalWordIdx + chunkWordCount) return;
-      highlightCurrentWord(playerIndex, wi);
-      wi++;
-      currentWordTimer = setTimeout(wordTick, msPerWord);
-    };
-    setTimeout(() => { if (!boundaryFired) wordTick(); }, 200);
-
-    const fallbackMs = Math.max(1200, chunk.length * 95 / Math.max(playerSpeed, 0.1));
-    const fallback = setTimeout(() => {
-      clearInterval(keepAliveInterval);
-      if (playerPlaying) { globalWordIdx += chunkWordCount; chunkIdx++; speakChunk(); }
-    }, fallbackMs + 500);
-
-    utt.onend = () => {
-      clearTimeout(fallback);
-      clearInterval(keepAliveInterval);
-      clearTimeout(currentWordTimer);
-      globalWordIdx += chunkWordCount;
-      chunkIdx++;
-      if (playerPlaying) speakChunk();
-    };
-
-    utt.onerror = () => {
-      clearTimeout(fallback);
-      clearInterval(keepAliveInterval);
-      setTimeout(() => { if (playerPlaying) speakChunk(); }, 250);
-    };
-
-    window.speechSynthesis.speak(utt);
+  // Boundary events — Chrome/Android
+  utt.onboundary = e => {
+    if (e.name !== 'word') return;
+    boundaryFired = true;
+    clearTimeout(currentWordTimer);
+    const charsBefore = sentence.slice(0, e.charIndex);
+    const wordIdx = charsBefore.trim().split(/\s+/).filter(Boolean).length;
+    highlightCurrentWord(playerIndex, wordIdx);
   };
 
-  speakChunk();
-  // Only scroll to active sentence, don't reset word colors
+  // Time-based word highlight — iOS fallback
+  const msPerWord = sentence.length * 80 / Math.max(playerSpeed, 0.1) / Math.max(wordCount, 1);
+  let wi = 0;
+  const wordTick = () => {
+    if (boundaryFired || !playerPlaying || wi >= wordCount) return;
+    highlightCurrentWord(playerIndex, wi++);
+    currentWordTimer = setTimeout(wordTick, msPerWord);
+  };
+  currentWordTimer = setTimeout(wordTick, 250);
+
+  // Watchdog — if speech stalls, move on
+  const expectedMs = Math.max(2000, sentence.length * 110 / Math.max(playerSpeed, 0.1));
+  const watchdog = setTimeout(() => {
+    if (playerPlaying) nextSentence();
+  }, expectedMs);
+
+  utt.onend = () => {
+    clearTimeout(watchdog);
+    clearTimeout(currentWordTimer);
+    if (playerPlaying) nextSentence();
+  };
+
+  utt.onerror = e => {
+    clearTimeout(watchdog);
+    clearTimeout(currentWordTimer);
+    if (e.error === 'interrupted') return; // we cancelled it intentionally
+    // Retry once after brief pause
+    setTimeout(() => { if (playerPlaying) speakCurrent(); }, 400);
+  };
+
+  // Keep-alive for iOS background
+  keepAliveInterval = setInterval(() => {
+    if (!playerPlaying) { clearInterval(keepAliveInterval); return; }
+    if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+  }, 5000);
+
+  window.speechSynthesis.speak(utt);
   scrollToActiveSentence();
 }
 
