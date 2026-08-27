@@ -2767,16 +2767,27 @@ function attachScriptDrag(div, scriptId) {
 
 // ── SCRIPT PLAYER ──────────────────────────
 function sentenceSplit(text) {
-  // First split on newlines, then on sentence punctuation within each line
-  const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
+  // Split on newlines, tracking single vs double breaks
+  const lines = text.split(/\n/).map(l => l.trim());
   const sentences = [];
+  let prevWasEmpty = false;
   for (let li = 0; li < lines.length; li++) {
-    const parts = lines[li].match(/[^.!?¡¿]+[.!?¡¿]*/g)?.map(s => s.trim()).filter(Boolean) || [lines[li]];
+    const line = lines[li];
+    if (line === '') {
+      prevWasEmpty = true;
+      continue;
+    }
+    const parts = line.match(/[^.!?¡¿]+[.!?¡¿]*/g)?.map(s => s.trim()).filter(Boolean) || [line];
     parts.forEach((s, i) => {
-      sentences.push({ text: s, lineBreakBefore: li > 0 && i === 0 });
+      sentences.push({
+        text: s,
+        lineBreakBefore: li > 0 && i === 0,
+        extraSpaceBefore: prevWasEmpty && i === 0
+      });
     });
+    prevWasEmpty = false;
   }
-  return sentences.length ? sentences : [{ text, lineBreakBefore: false }];
+  return sentences.length ? sentences : [{ text, lineBreakBefore: false, extraSpaceBefore: false }];
 }
 
 function startPlayer(scriptId, playBtn) {
@@ -2836,7 +2847,13 @@ function renderPlayerText() {
   allWords = [];
 
   playerSentences.forEach((sentObj, si) => { const s = sentObj.text;
-    if (sentObj.lineBreakBefore) area.appendChild(document.createElement('br'));
+    if (sentObj.extraSpaceBefore) {
+      const spacer = document.createElement('span');
+      spacer.style.cssText = 'display:block;height:0.8em;';
+      area.appendChild(spacer);
+    } else if (sentObj.lineBreakBefore) {
+      area.appendChild(document.createElement('br'));
+    }
     const sentenceDiv = document.createElement('span');
     sentenceDiv.style.cssText = 'display:inline;cursor:pointer;';
     sentenceDiv.dataset.si = si;
