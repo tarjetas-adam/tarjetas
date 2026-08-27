@@ -2247,11 +2247,18 @@ function renderDetailWordList(deck) {
     const row = document.createElement('div');
     row.className = 'word-item';
     row.dataset.id = card.id;
-    row.style.cursor = 'grab';
+    row.style.cursor = 'pointer';
     row.innerHTML = `
-      <span class="word-en">${esc(card.en)}</span>
-      <span class="word-es">${esc(card.es)}</span>
+      <span class="word-en" style="flex:1;">${esc(card.en)}</span>
+      <span class="word-es" style="flex:1;">${esc(card.es)}</span>
+      <button style="background:none;border:none;color:var(--ink-3);cursor:pointer;font-size:14px;padding:4px 6px;" data-del="${card.id}">✕</button>
     `;
+    row.addEventListener('click', e => {
+      if (e.target.closest('button')) return;
+      openEditWordModal(deck.id, card.id);
+    });
+    const delBtn = row.querySelector('[data-del]');
+    delBtn.addEventListener('click', e => { e.stopPropagation(); confirmDeleteWord(deck.id, card.id); });
     attachWordDrag(row, deck.id);
     list.appendChild(row);
   });
@@ -2269,14 +2276,14 @@ function renderEditDeckWordList(deck) {
     const row = document.createElement('div');
     row.className = 'word-item';
     row.dataset.id = card.id;
+    row.style.cursor = 'pointer';
     row.innerHTML = `
       <span class="word-en" style="flex:1">${esc(card.en)}</span>
       <span class="word-es" style="flex:1">${esc(card.es)}</span>
-      <button style="background:none;border:none;color:var(--ink-3);cursor:pointer;font-size:13px;padding:4px 6px;border-radius:4px;font-family:'DM Sans',sans-serif;" data-edit="${card.id}">✎</button>
       <button style="background:none;border:none;color:var(--ink-3);cursor:pointer;font-size:14px;padding:4px;" data-del="${card.id}">✕</button>
     `;
-    row.querySelector('[data-edit]').addEventListener('click', e => {
-      e.stopPropagation();
+    row.addEventListener('click', e => {
+      if (e.target.closest('button')) return;
       openEditWordModal(deck.id, card.id);
     });
     row.querySelector('[data-del]').addEventListener('click', e => {
