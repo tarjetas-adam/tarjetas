@@ -1427,6 +1427,7 @@ function attachDeckCardBehavior(div, deckId) {
   };
 
   let currentTargetId = null;
+  let dropTargetId = null; // track the intended drop target during drag
 
   const moveDrag = (clientY) => {
     if (!dragging) return;
@@ -1435,29 +1436,40 @@ function attachDeckCardBehavior(div, deckId) {
     const list = document.getElementById('deck-list');
     const fromIdx = decks.findIndex(d => d.id === deckId);
     const cards = [...list.querySelectorAll('.deck-card:not(.dragging)')];
+    const cardH = dragCardH + 12;
 
-    // Find where the ghost would land
-    let insertBefore = null; // the card we'd insert before (null = end)
+    // Calculate current shifts so we can reverse them for hit-testing
+    const prevToIdx = currentTargetId && currentTargetId !== '__end__'
+      ? decks.findIndex(d => d.id === currentTargetId)
+      : (currentTargetId === '__end__' ? decks.length : -1);
+
+    let insertBefore = null;
     for (const card of cards) {
+      const cardDeckIdx = decks.findIndex(d => d.id === card.dataset.id);
       const rect = card.getBoundingClientRect();
-      if (clientY < rect.top + rect.height / 2) { insertBefore = card; break; }
+      // Reverse the current shift to get original position
+      let currentShift = 0;
+      if (prevToIdx >= 0) {
+        if (fromIdx < prevToIdx && cardDeckIdx > fromIdx && cardDeckIdx < prevToIdx) currentShift = -cardH;
+        else if (fromIdx > prevToIdx && cardDeckIdx >= prevToIdx && cardDeckIdx < fromIdx) currentShift = cardH;
+      }
+      const origTop = rect.top - currentShift;
+      if (clientY < origTop + rect.height * 0.5) { insertBefore = card; break; }
     }
 
     const targetId = insertBefore ? insertBefore.dataset.id : '__end__';
+    dropTargetId = targetId;
     if (targetId === currentTargetId) return;
     currentTargetId = targetId;
 
     const toIdx = insertBefore ? decks.findIndex(d => d.id === insertBefore.dataset.id) : decks.length;
-    const cardH = dragCardH + 12; // height + margin-bottom
 
-    cards.forEach((card, i) => {
+    cards.forEach((card) => {
       const cardDeckIdx = decks.findIndex(d => d.id === card.dataset.id);
       let shift = 0;
       if (fromIdx < toIdx) {
-        // dragging down: cards between from+1 and to shift UP
         if (cardDeckIdx > fromIdx && cardDeckIdx < toIdx) shift = -cardH;
       } else {
-        // dragging up: cards between to and from-1 shift DOWN
         if (cardDeckIdx >= toIdx && cardDeckIdx < fromIdx) shift = cardH;
       }
       card.style.transition = 'transform 0.32s cubic-bezier(0.4,0,0.2,1)';
@@ -1468,27 +1480,22 @@ function attachDeckCardBehavior(div, deckId) {
   const endDrag = (clientY) => {
     if (!dragging) return;
     dragging = false;
+
+    // Use the last tracked drop target — this reflects where the gap visually was
+    const finalTargetId = dropTargetId;
     currentTargetId = null;
+    dropTargetId = null;
+
     div.classList.remove('dragging');
     if (ghost) { ghost.remove(); ghost = null; }
 
     const list = document.getElementById('deck-list');
-    const cards = [...list.querySelectorAll('.deck-card')];
-    // Reset all transforms instantly
-    cards.forEach(c => { c.style.transition = 'none'; c.style.transform = ''; });
+    const allCards = [...list.querySelectorAll('.deck-card')];
+    allCards.forEach(c => { c.style.transition = 'none'; c.style.transform = ''; });
 
-    const otherCards = [...list.querySelectorAll('.deck-card:not(.dragging)')];
-    otherCards.forEach(c => c.classList.remove('drag-over'));
-
-    let target = null;
-    for (const card of otherCards) {
-      const rect = card.getBoundingClientRect();
-      if (clientY < rect.top + rect.height / 2) { target = card; break; }
-    }
-
-    if (target && target.dataset.id !== deckId) {
-      reorderDecks(deckId, target.dataset.id);
-    } else if (!target) {
+    if (finalTargetId && finalTargetId !== '__end__' && finalTargetId !== deckId) {
+      reorderDecks(deckId, finalTargetId);
+    } else if (!finalTargetId || finalTargetId === '__end__') {
       const fromIdx = decks.findIndex(d => d.id === deckId);
       if (fromIdx !== -1 && fromIdx !== decks.length - 1) {
         const [moved] = decks.splice(fromIdx, 1);
@@ -1562,7 +1569,9 @@ function reorderDecks(fromId, toId) {
   const toIdx = decks.findIndex(d => d.id === toId);
   if (fromIdx === -1 || toIdx === -1) return;
   const [moved] = decks.splice(fromIdx, 1);
-  decks.splice(toIdx, 0, moved);
+  // After removing fromIdx, if toIdx was after fromIdx it shifts down by 1
+  const insertAt = fromIdx < toIdx ? toIdx - 1 : toIdx;
+  decks.splice(insertAt, 0, moved);
   save(); renderHome();
 }
 
@@ -2284,7 +2293,6 @@ function attachWordDrag(row, deckId) {
   let ghost = null;
   let ghostOffsetY = 0;
   let dragCardH = 0;
-  let currentTargetId = null;
   let startY = 0;
   let liveTouchY = 0;
 
@@ -2301,6 +2309,9 @@ function attachWordDrag(row, deckId) {
     document.body.appendChild(ghost);
   };
 
+  let currentTargetId = null;
+  let dropTargetId = null;
+
   const moveDrag = (clientY) => {
     if (!dragging) return;
     ghost.style.top = (clientY - ghostOffsetY) + 'px';
@@ -2311,9 +2322,10 @@ function attachWordDrag(row, deckId) {
     let target = null;
     for (const r of rows) {
       const rect = r.getBoundingClientRect();
-      if (clientY < rect.top + rect.height / 2) { target = r; break; }
+      if (clientY < rect.top + rect.height * 0.5) { target = r; break; }
     }
     const targetId = target ? target.dataset.id : '__end__';
+    dropTargetId = targetId;
     if (targetId === currentTargetId) return;
     currentTargetId = targetId;
     const toIdx = target ? deck.cards.findIndex(c => c.id === target.dataset.id) : deck.cards.length;
@@ -2330,30 +2342,29 @@ function attachWordDrag(row, deckId) {
   const endDrag = (clientY) => {
     if (!dragging) return;
     dragging = false;
+    const finalTargetId = dropTargetId;
     currentTargetId = null;
+    dropTargetId = null;
     row.classList.remove('dragging');
     if (ghost) { ghost.remove(); ghost = null; }
     const list = document.getElementById('detail-word-list');
     [...list.querySelectorAll('.word-item')].forEach(r => { r.style.transition = 'none'; r.style.transform = ''; });
-    const rows = [...list.querySelectorAll('.word-item:not(.dragging)')];
-    let target = null;
-    for (const r of rows) {
-      const rect = r.getBoundingClientRect();
-      if (clientY < rect.top + rect.height / 2) { target = r; break; }
-    }
     const deck = decks.find(d => d.id === deckId);
     const fromIdx = deck.cards.findIndex(c => c.id === row.dataset.id);
-    if (target) {
-      const toIdx = deck.cards.findIndex(c => c.id === target.dataset.id);
+    if (finalTargetId && finalTargetId !== '__end__' && finalTargetId !== row.dataset.id) {
+      const toIdx = deck.cards.findIndex(c => c.id === finalTargetId);
       if (toIdx !== -1 && fromIdx !== toIdx) {
         const [moved] = deck.cards.splice(fromIdx, 1);
-        deck.cards.splice(toIdx, 0, moved);
+        const insertAt = fromIdx < toIdx ? toIdx - 1 : toIdx;
+        deck.cards.splice(insertAt, 0, moved);
         save(); renderDetailWordList(deck);
       }
-    } else if (fromIdx !== deck.cards.length - 1) {
-      const [moved] = deck.cards.splice(fromIdx, 1);
-      deck.cards.push(moved);
-      save(); renderDetailWordList(deck);
+    } else if (!finalTargetId || finalTargetId === '__end__') {
+      if (fromIdx !== deck.cards.length - 1) {
+        const [moved] = deck.cards.splice(fromIdx, 1);
+        deck.cards.push(moved);
+        save(); renderDetailWordList(deck);
+      }
     }
     setTimeout(() => { dragging = false; }, 0);
   };
@@ -2567,7 +2578,7 @@ let currentScriptId = null;
 let playerSentences = [];
 let playerIndex = 0;
 let playerPlaying = false;
-let playerSpeed = 0.5;
+let playerSpeed = 0.65;
 let playerUtterance = null;
 let selectedScriptText = '';
 let selectedScriptRange = null;
@@ -2687,7 +2698,7 @@ function attachScriptDrag(div, scriptId) {
     let target = null;
     for (const r of rows) {
       const rect = r.getBoundingClientRect();
-      if (clientY < rect.top + rect.height/2) { target = r; break; }
+      if (clientY < rect.top + rect.height * 0.35) { target = r; break; }
     }
     const targetId = target ? target.dataset.id : '__end__';
     if (targetId === currentTargetId) return;
@@ -2713,7 +2724,7 @@ function attachScriptDrag(div, scriptId) {
     let target = null;
     for (const r of rows) {
       const rect = r.getBoundingClientRect();
-      if (clientY < rect.top + rect.height/2) { target = r; break; }
+      if (clientY < rect.top + rect.height * 0.35) { target = r; break; }
     }
     const fromIdx = scripts.findIndex(s => s.id === scriptId);
     if (target && target.dataset.id !== scriptId) {
@@ -2756,7 +2767,16 @@ function attachScriptDrag(div, scriptId) {
 
 // ── SCRIPT PLAYER ──────────────────────────
 function sentenceSplit(text) {
-  return text.match(/[^.!?¡¿]+[.!?¡¿]*/g)?.map(s => s.trim()).filter(Boolean) || [text];
+  // First split on newlines, then on sentence punctuation within each line
+  const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
+  const sentences = [];
+  for (let li = 0; li < lines.length; li++) {
+    const parts = lines[li].match(/[^.!?¡¿]+[.!?¡¿]*/g)?.map(s => s.trim()).filter(Boolean) || [lines[li]];
+    parts.forEach((s, i) => {
+      sentences.push({ text: s, lineBreakBefore: li > 0 && i === 0 });
+    });
+  }
+  return sentences.length ? sentences : [{ text, lineBreakBefore: false }];
 }
 
 function startPlayer(scriptId, playBtn) {
@@ -2772,22 +2792,28 @@ function startPlayer(scriptId, playBtn) {
   playerSentences = sentenceSplit(script.text);
   playerIndex = 0;
   playerPlaying = false;
-  playerSpeed = 0.5;
+  playerSpeed = 0.65;
   document.getElementById('player-title').textContent = script.title;
 
   // Update speed buttons
   document.querySelectorAll('.speed-btn').forEach(b => {
     b.classList.remove('active');
   });
-  // Animate player in after short delay
+  // Animate player in after short delay, then auto-start
   setTimeout(() => {
     showScreen('script-player');
     const playerEl = document.getElementById('script-player');
     playerEl.classList.remove('slide-in');
-    void playerEl.offsetWidth; // force reflow
+    void playerEl.offsetWidth;
     playerEl.classList.add('slide-in');
     renderPlayerText();
     setPlayerIcon(false);
+    // Auto-start after slide-in completes
+    setTimeout(() => {
+      playerPlaying = true;
+      setPlayerIcon(true);
+      speakCurrent();
+    }, 1200);
   }, 150);
 }
 
@@ -2809,11 +2835,16 @@ function renderPlayerText() {
   area.innerHTML = '';
   allWords = [];
 
-  playerSentences.forEach((s, si) => {
+  playerSentences.forEach((sentObj, si) => { const s = sentObj.text;
+    if (sentObj.lineBreakBefore) area.appendChild(document.createElement('br'));
+    const sentenceDiv = document.createElement('span');
+    sentenceDiv.style.cssText = 'display:inline;cursor:pointer;';
+    sentenceDiv.dataset.si = si;
+
     const words = s.split(/(\s+)/);
     words.forEach(w => {
       if (/^\s+$/.test(w)) {
-        area.appendChild(document.createTextNode(w));
+        sentenceDiv.appendChild(document.createTextNode(w));
       } else {
         const span = document.createElement('span');
         const stateClass = si < playerIndex ? 'done' : 'upcoming';
@@ -2821,39 +2852,48 @@ function renderPlayerText() {
         span.dataset.si = si;
         span.dataset.wi = allWords.length;
         span.textContent = w;
-        span.style.cssText = 'display:inline;border-radius:3px;padding:1px 0;transition:background 0.1s;pointer-events:auto;cursor:pointer;-webkit-user-select:none;user-select:none;';
-        const capturedSi = si;
-        span.addEventListener('click', () => {
-          if (selectionModeActive || isSelecting) return;
-          stopPlayerSpeech();
-          playerPlaying = false;
-          setPlayerIcon(false);
-          playerIndex = capturedSi;
-          updatePlayerHighlight();
-          // Scroll to this sentence
-          const area = document.getElementById('player-text-area');
-          if (area) {
-            const areaRect = area.getBoundingClientRect();
-            const spanRect = span.getBoundingClientRect();
-            const targetScroll = area.scrollTop + (spanRect.top - areaRect.top) - area.clientHeight * 0.35;
-            area.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
-          }
-          // Wait 1s then play
-          setTimeout(() => {
-            playerPlaying = true;
-            setPlayerIcon(true);
-            speakCurrent();
-          }, 1000);
-        });
+        span.style.cssText = 'display:inline;border-radius:3px;transition:background 0.1s;pointer-events:auto;-webkit-user-select:none;user-select:none;';
+
         allWords.push({ span, si, word: w });
-        area.appendChild(span);
+        sentenceDiv.appendChild(span);
       }
     });
+
+    area.appendChild(sentenceDiv);
     area.appendChild(document.createTextNode(' '));
   });
 
   setupWordSelection(area);
   updateProgress();
+
+  // Wait for layout then check if sentences need a line break
+  setTimeout(() => {
+    const siGroups = {};
+    allWords.forEach(({span, si}) => {
+      if (!siGroups[si]) siGroups[si] = [];
+      siGroups[si].push(span);
+    });
+    Object.keys(siGroups).sort((a,b) => a-b).forEach(si => {
+      const spans = siGroups[si];
+      if (spans.length === 0) return;
+      // Get the top of the first word of this sentence
+      const firstTop = Math.round(spans[0].getBoundingClientRect().top);
+      // Count words on the first line of this sentence
+      let wordsOnFirstLine = 0;
+      for (const s of spans) {
+        if (Math.round(s.getBoundingClientRect().top) === firstTop) wordsOnFirstLine++;
+        else break;
+      }
+      // If fewer than 3 words fit on the first line and the sentence doesn't start at the left edge
+      const firstLeft = spans[0].getBoundingClientRect().left;
+      const areaLeft = area.getBoundingClientRect().left + 24; // 24px padding
+      const startsAtLineStart = Math.abs(firstLeft - areaLeft) < 10;
+      if (wordsOnFirstLine < 3 && !startsAtLineStart) {
+        const br = document.createElement('br');
+        spans[0].parentNode.insertBefore(br, spans[0]);
+      }
+    });
+  }, 100);
 }
 
 function updatePlayerHighlight() {
@@ -2937,7 +2977,8 @@ function speakCurrent() {
   stopPlayerSpeech();
   if (!playerPlaying) return;
 
-  const sentence = playerSentences[playerIndex];
+  const sentObj = playerSentences[playerIndex];
+  const sentence = sentObj.text || sentObj;
   const words = allWords.filter(w => w.si === playerIndex);
   const wordCount = words.length;
   let boundaryFired = false;
@@ -2964,7 +3005,7 @@ function speakCurrent() {
   };
 
   // Time-based word highlight — iOS fallback
-  const msPerWord = sentence.length * 80 / Math.max(playerSpeed, 0.1) / Math.max(wordCount, 1);
+  const msPerWord = sentence.length * 72 / Math.max(playerSpeed, 0.1) / Math.max(wordCount, 1);
   let wi = 0;
   const wordTick = () => {
     if (boundaryFired || !playerPlaying || wi >= wordCount) return;
@@ -2974,7 +3015,7 @@ function speakCurrent() {
   currentWordTimer = setTimeout(wordTick, 250);
 
   // Watchdog — if speech stalls, move on
-  const expectedMs = Math.max(2000, sentence.length * 110 / Math.max(playerSpeed, 0.1));
+  const expectedMs = Math.max(2000, sentence.length * 100 / Math.max(playerSpeed, 0.1));
   const watchdog = setTimeout(() => {
     if (playerPlaying) nextSentence();
   }, expectedMs);
@@ -3029,14 +3070,17 @@ function highlightCurrentWord(si, wordOffset) {
     if (count < wordOffset) {
       // already spoken — grey
       w.span.style.color = 'rgba(255,255,255,0.28)';
+      w.span.style.textShadow = '';
     } else if (count === wordOffset) {
-      // current word — orange
+      // current word — orange, no bold (avoids reflow)
       w.span.style.color = '#D4580A';
-      w.span.style.fontWeight = '600';
+      w.span.style.textShadow = '0 0 0.5px #D4580A';
+      w.span.style.fontWeight = '400';
     } else {
       // upcoming — white
       w.span.style.color = '#fff';
       w.span.style.fontWeight = '400';
+      w.span.style.textShadow = '';
     }
     count++;
   });
@@ -3061,20 +3105,20 @@ function splitIntoChunks(text, maxChars) {
 function nextSentence() {
   const prevIdx = playerIndex;
   playerIndex++;
-  // Grey out all words from completed sentence without touching new sentence
+  // Grey out all words from completed sentence
   allWords.forEach(w => {
     if (w.si === prevIdx) {
       w.span.style.color = 'rgba(255,255,255,0.28)';
       w.span.style.fontWeight = '400';
+      w.span.style.textShadow = '';
       w.span.className = 'player-sentence player-word done';
     }
   });
   updateProgress();
-  if (playerIndex >= playerSentences.length) {
-    speakCurrent();
-  } else {
-    speakCurrent();
-  }
+  // Pause between sentences
+  setTimeout(() => {
+    if (playerPlaying) speakCurrent();
+  }, 800);
 }
 
 function playerPrevSentence() {
