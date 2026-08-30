@@ -328,7 +328,7 @@
   }
   .btn-speaker:hover { background: rgba(255,255,255,0.2); }
 
-  .swipe-badge {
+  .swipe-badge { display:none !important; } .swipe-badge-hidden {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
@@ -846,6 +846,7 @@
       <button class="filter-pill active" data-filter="all" onclick="setFilter('all')">All</button>
       <button class="filter-pill" data-filter="situations" onclick="setFilter('situations')">Situations</button>
       <button class="filter-pill" data-filter="verbs" onclick="setFilter('verbs')">Verbs</button>
+      <button class="filter-pill" data-filter="due" onclick="setFilter('due')" id="due-pill">Due</button>
     </div>
   </div>
 
@@ -925,7 +926,7 @@
     <div style="width:32px"></div>
   </div>
   <div class="autoplay-body">
-    <div class="autoplay-card">
+    <div class="autoplay-card" onclick="autoplaySkipToSpanish()" style="cursor:pointer;">
       <div class="autoplay-lang-label">English</div>
       <div class="autoplay-word" id="autoplay-en-word">—</div>
       <div class="autoplay-divider"></div>
@@ -1337,11 +1338,16 @@ function renderHome() {
   const filtered = decks.filter(deck => {
     if (currentFilter === 'verbs') return isVerb(deck);
     if (currentFilter === 'situations') return !isVerb(deck);
+    if (currentFilter === 'due') return getDueCount(deck) > 0 || !deck.lastStudied;
     return true;
   });
   filtered.forEach(deck => {
     const div = document.createElement('div');
     div.className = 'deck-card';
+    const dueCount = getDueCount(deck);
+    const hasBeenStudied = !!deck.lastStudied;
+    const btnLabel = !hasBeenStudied ? 'Study' : dueCount > 0 ? `Review · ${dueCount}` : 'Review';
+    const btnDisabled = hasBeenStudied && dueCount === 0;
     div.dataset.id = deck.id;
     div.innerHTML = `
       <div class="deck-card-inner">
@@ -1356,7 +1362,7 @@ function renderHome() {
           <div class="deck-actions">
             <button class="btn-secondary" data-action="autoplay" style="width:36px;height:36px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
             </button>
-            <button class="btn-primary" data-action="study">Study</button>
+            <button class="btn-primary" data-action="study" style="width:110px;text-align:center;${btnDisabled ? 'opacity:0.4;' : ''}">${btnLabel}</button>
           </div>
         </div>
       </div>
@@ -1575,6 +1581,80 @@ function reorderDecks(fromId, toId) {
   save(); renderHome();
 }
 
+// ── SPACED REPETITION ──
+const SR_INTERVALS = [0, 1, 3, 7, 21, 60]; // days per level 1-5
+
+function getSR(deckId) {
+  const raw = localStorage.getItem('sr-' + deckId);
+  return raw ? JSON.parse(raw) : {};
+}
+function setSR(deckId, sr) {
+  localStorage.setItem('sr-' + deckId, JSON.stringify(sr));
+}
+function getCardSR(sr, cardId) {
+  return sr[cardId] || { level: 0, nextReview: null };
+}
+function today() {
+  const d = new Date(); d.setHours(0,0,0,0); return d.getTime();
+}
+function addDays(ms, days) {
+  return ms + days * 86400000;
+}
+function isDueToday(cardData) {
+  if (!cardData.nextReview) return true; // never reviewed
+  return cardData.nextReview <= today();
+}
+function applyOverduePenalty(sr, deck) {
+  // Cards overdue by >7 days drop one level
+  const now = today();
+  let changed = false;
+  deck.cards.forEach(card => {
+    const cd = getCardSR(sr, card.id);
+    if (cd.nextReview && cd.level > 1 && (now - cd.nextReview) > 7 * 86400000) {
+      sr[card.id] = { level: cd.level - 1, nextReview: now };
+      changed = true;
+    }
+  });
+  return changed;
+}
+function getDueCards(deck) {
+  const sr = getSR(deck.id);
+  applyOverduePenalty(sr, deck);
+  setSR(deck.id, sr);
+  return deck.cards.filter(card => isDueToday(getCardSR(sr, card.id)));
+}
+function getDueCount(deck) {
+  return getDueCards(deck).length;
+}
+function recordSwipe(deckId, cardId, knew) {
+  const sr = getSR(deckId);
+  const cd = getCardSR(sr, cardId);
+  let newLevel;
+  if (knew) {
+    newLevel = Math.min((cd.level || 0) + 1, 5);
+  } else {
+    newLevel = 1;
+  }
+  const interval = SR_INTERVALS[newLevel];
+  sr[cardId] = { level: newLevel, nextReview: addDays(today(), interval) };
+  setSR(deckId, sr);
+}
+function getNextReviewDays(deckId) {
+  const sr = getSR(deckId);
+  const deck = decks.find(d => d.id === deckId);
+  if (!deck) return null;
+  let earliest = null;
+  deck.cards.forEach(card => {
+    const cd = getCardSR(sr, card.id);
+    if (cd.nextReview && !isDueToday(cd)) {
+      const days = Math.ceil((cd.nextReview - today()) / 86400000);
+      if (earliest === null || days < earliest) earliest = days;
+    }
+  });
+  return earliest;
+}
+
+// Legacy mastery (kept for % display)
 function getMastery(deckId) {
   const raw = localStorage.getItem('mastery-' + deckId);
   return raw ? JSON.parse(raw) : { known: [], notKnown: [] };
@@ -1584,8 +1664,9 @@ function setMastery(deckId, mastery) {
 }
 function getMasteryPct(deck) {
   if (!deck.cards.length) return 0;
-  const m = getMastery(deck.id);
-  return Math.round(m.known.length / deck.cards.length * 100);
+  const sr = getSR(deck.id);
+  const highLevel = deck.cards.filter(c => (getCardSR(sr, c.id).level || 0) >= 3).length;
+  return Math.round(highLevel / deck.cards.length * 100);
 }
 
 // ── STUDY ──
@@ -1598,23 +1679,15 @@ function startStudy(deckId) {
   save();
 
   currentDeckId = deckId;
-  const saved = loadStudyProgress(deckId);
-  if (saved && saved.cardIndex > 0 && saved.cardIndex < deck.cards.length) {
-    studyQueue = [...deck.cards];
-    missedCards = saved.missed || [];
-    roundKnown = saved.known || 0;
-    currentCardIndex = saved.cardIndex;
-    totalCards = studyQueue.length;
-    isFirstRound = saved.isFirstRound !== false;
-  } else {
-    clearStudyProgress(deckId);
-    studyQueue = [...deck.cards];
-    missedCards = [];
-    roundKnown = 0;
-    totalCards = studyQueue.length;
-    currentCardIndex = 0;
-    isFirstRound = true;
-  }
+  clearStudyProgress(deckId);
+  // Only show cards due today (or all if none reviewed yet)
+  const dueCards = getDueCards(deck);
+  studyQueue = dueCards.length > 0 ? dueCards : [...deck.cards];
+  missedCards = [];
+  roundKnown = 0;
+  totalCards = studyQueue.length;
+  currentCardIndex = 0;
+  isFirstRound = true;
   isFlipped = false;
 
   showScreen('study');
@@ -1651,8 +1724,6 @@ function renderStudyCard() {
             </svg>
           </button>
         </div>
-        <div class="swipe-badge know">✓ Knew it</div>
-        <div class="swipe-badge skip">✕ Again</div>
       </div>
     </div>
   `;
@@ -1678,24 +1749,22 @@ function swipeCard(dir) {
   const fc = document.getElementById('flashcard');
   if (!fc) return;
   const card = studyQueue[currentCardIndex];
-  if (dir === 'left') {
-    fc.classList.add('swipe-left');
-    missedCards.push(card);
-    if (isFirstRound) {
-      const m = getMastery(currentDeckId);
-      m.known = m.known.filter(id => id !== card.id);
-      if (!m.notKnown.includes(card.id)) m.notKnown.push(card.id);
-      setMastery(currentDeckId, m);
-    }
-  } else {
+  const knew = dir === 'right';
+  if (knew) {
     fc.classList.add('swipe-right');
     roundKnown++;
-    if (isFirstRound) {
-      const m = getMastery(currentDeckId);
-      m.notKnown = m.notKnown.filter(id => id !== card.id);
-      if (!m.known.includes(card.id)) m.known.push(card.id);
-      setMastery(currentDeckId, m);
-    }
+  } else {
+    fc.classList.add('swipe-left');
+    missedCards.push(card);
+  }
+  // Record spaced repetition only on first round
+  if (isFirstRound) recordSwipe(currentDeckId, card.id, knew);
+  // Legacy mastery
+  if (isFirstRound) {
+    const m = getMastery(currentDeckId);
+    if (knew) { m.notKnown = m.notKnown.filter(id => id !== card.id); if (!m.known.includes(card.id)) m.known.push(card.id); }
+    else { m.known = m.known.filter(id => id !== card.id); if (!m.notKnown.includes(card.id)) m.notKnown.push(card.id); }
+    setMastery(currentDeckId, m);
   }
   setTimeout(() => {
     currentCardIndex++;
@@ -1706,21 +1775,22 @@ function swipeCard(dir) {
 
 function showRoundComplete() {
   const area = document.getElementById('card-area');
-  // study-actions hidden
   document.getElementById('study-progress-fill').style.width = (totalCards ? roundKnown/totalCards*100 : 100) + '%';
+  const nextDays = getNextReviewDays(currentDeckId);
+  const nextMsg = nextDays === 1 ? 'Come back tomorrow' : nextDays ? `Next review in ${nextDays} days` : '';
 
   if (missedCards.length === 0) {
     clearStudyProgress(currentDeckId);
     area.innerHTML = `
       <div class="round-complete">
         <div class="big-emoji">🎉</div>
-        <h2>Perfecto!</h2>
-        <p>You knew all ${totalCards} cards. ¡Muy bien!</p>
+        <h2>¡Muy bien!</h2>
+        <p>${nextMsg ? nextMsg + '.' : 'All cards known!'}</p>
         <div class="stat-row">
-          <div class="stat-box"><div class="stat-num">${totalCards}</div><div class="stat-label">Cards done</div></div>
-          <div class="stat-box"><div class="stat-num">100%</div><div class="stat-label">Success</div></div>
+          <div class="stat-box"><div class="stat-num">${roundKnown}</div><div class="stat-label">Knew it</div></div>
+          <div class="stat-box"><div class="stat-num">0</div><div class="stat-label">Again</div></div>
         </div>
-        <button class="btn-primary" onclick="restartStudy()" style="padding:14px 32px;font-size:15px">Study again</button>
+        <button class="btn-primary" onclick="exitStudy()" style="padding:14px 32px;font-size:15px">Done</button>
       </div>
     `;
   } else {
@@ -1728,10 +1798,10 @@ function showRoundComplete() {
       <div class="round-complete">
         <div class="big-emoji">💪</div>
         <h2>Round complete</h2>
-        <p>You missed <strong>${missedCards.length}</strong> card${missedCards.length !== 1 ? 's' : ''}. Let's go again!</p>
+        <p>${missedCards.length} card${missedCards.length !== 1 ? 's' : ''} to practice again.</p>
         <div class="stat-row">
           <div class="stat-box"><div class="stat-num">${roundKnown}</div><div class="stat-label">Knew it</div></div>
-          <div class="stat-box"><div class="stat-num">${missedCards.length}</div><div class="stat-label">Try again</div></div>
+          <div class="stat-box"><div class="stat-num">${missedCards.length}</div><div class="stat-label">Again</div></div>
         </div>
         <button class="btn-primary" onclick="nextRound()" style="padding:14px 32px;font-size:15px">Next round →</button>
       </div>
@@ -1797,14 +1867,13 @@ function setupSwipe() {
     } else {
       fc.style.transform = `translateX(${dx}px) rotate(${dx * 0.03}deg)`;
     }
-    fc.querySelector('.swipe-badge.know').style.opacity = dx > 20 ? Math.min((dx-20)/50,1) : 0;
-    fc.querySelector('.swipe-badge.skip').style.opacity = dx < -20 ? Math.min((-dx-20)/50,1) : 0;
+
   };
 
   const onRelease = (dx) => {
     fc.style.transform = '';
     if (fc.classList.contains('flipped')) fc.style.transform = 'rotateY(180deg)';
-    fc.querySelector('.swipe-badge.know').style.opacity = 0;
+
     fc.querySelector('.swipe-badge.skip').style.opacity = 0;
     if (Math.abs(dx) > 50) {
       if (dx > 0) swipeCard('right'); else swipeCard('left');
@@ -2004,6 +2073,41 @@ function toggleAutoplay() {
       speakTextWithCallback(card.en, 'en', () => scheduleAutoplay());
     }
   }
+}
+
+function autoplaySkipToSpanish() {
+  // Only skip if we're in the english or waiting phase
+  if (autoplayPhase === 'spanish' || autoplayPhase === 'after-spanish') return;
+  const deck = decks.find(d => d.id === autoplayDeckId);
+  if (!deck) return;
+  stopAutoplayTimer();
+  window.speechSynthesis && window.speechSynthesis.cancel();
+  // Jump straight to Spanish
+  const card = deck.cards[autoplayIndex];
+  const esEl = document.getElementById('autoplay-es-word');
+  if (esEl) esEl.style.opacity = '1';
+  autoplayPhase = 'spanish';
+  autoplayPlaying = true;
+  setPlayBtnIcon(true);
+  speakTextWithCallback(card.es, 'es', () => {
+    autoplayPhase = 'after-spanish';
+    autoplayTimer = setTimeout(() => {
+      if (!autoplayPlaying) return;
+      const nextIdx = autoplayIndex + 1;
+      if (nextIdx >= deck.cards.length) {
+        autoplayPlaying = false;
+        autoplayPhase = 'english';
+        setPlayBtnIcon(false);
+        saveAutoplayPosition(autoplayDeckId, 0);
+        showAutoplayComplete();
+      } else {
+        autoplayIndex = nextIdx;
+        autoplayPhase = 'english';
+        saveAutoplayPosition(autoplayDeckId, autoplayIndex);
+        autoplayShowCard(autoplayIndex, true);
+      }
+    }, 3000);
+  });
 }
 
 function setPlayBtnIcon(playing) {
@@ -3186,11 +3290,9 @@ function toggleSelectionMode() {
     btn.style.fontWeight = selectionModeActive ? '700' : '400';
   }
   if (selectionModeActive) {
-    // Pause playback when entering selection mode
     playerPlaying = false;
     stopPlayerSpeech();
     setPlayerIcon(false);
-    showToast('Hold a word to select');
   }
 }
 
@@ -3235,27 +3337,30 @@ function setupWordSelection(area) {
 
   let tapX = 0, tapY = 0;
 
-  // TOUCH
   area.addEventListener('touchstart', e => {
     tapX = e.touches[0].clientX;
     tapY = e.touches[0].clientY;
     if (!selectionModeActive) return;
-    const idx = wordIdxAt(tapX, tapY);
+    // Use the touched element directly for better accuracy
+    const el = e.target.closest ? e.target.closest('[data-wi]') : null;
+    const idx = el ? parseInt(el.dataset.wi) : wordIdxAt(tapX, tapY);
     if (idx < 0) return;
     touchTimer = setTimeout(() => {
       isSelecting = true;
       selectionStart = idx;
       selectionEnd = idx;
       highlightRange(idx, idx);
-    }, 900);
-  }, { passive: true });
+    }, 600);
+  }, { passive: false });
 
   area.addEventListener('touchmove', e => {
     clearTimeout(touchTimer);
     if (!isSelecting) return;
     e.preventDefault();
     const t = e.touches[0];
-    const idx = wordIdxAt(t.clientX, t.clientY);
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    const wordEl = el ? el.closest('[data-wi]') : null;
+    const idx = wordEl ? parseInt(wordEl.dataset.wi) : wordIdxAt(t.clientX, t.clientY);
     if (idx >= 0) { selectionEnd = idx; highlightRange(selectionStart, selectionEnd); }
   }, { passive: false });
 
@@ -3268,9 +3373,10 @@ function setupWordSelection(area) {
       const text = allWords.slice(lo, hi+1).map(w => w.word).join(' ').trim();
       clearHighlight();
       if (text.length > 1) showFlashcardPopup(text);
+      // Prevent the click event from firing after selection
+      e.preventDefault();
       return;
     }
-    // Simple tap — only handle if NOT in selection mode
     if (selectionModeActive) return;
     const idx = wordIdxAt(tapX, tapY);
     if (idx < 0) return;
@@ -3280,7 +3386,6 @@ function setupWordSelection(area) {
     setPlayerIcon(false);
     playerIndex = si;
     updatePlayerHighlight();
-    // Scroll to tapped sentence
     const firstWord = allWords.find(w => w.si === si);
     if (firstWord) {
       const areaRect = area.getBoundingClientRect();
@@ -3288,7 +3393,6 @@ function setupWordSelection(area) {
       const targetScroll = area.scrollTop + (wordRect.top - areaRect.top) - area.clientHeight * 0.35;
       area.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
     }
-    // Wait 1s then start playing
     setTimeout(() => {
       playerPlaying = true;
       setPlayerIcon(true);
@@ -3439,6 +3543,7 @@ function switchToView(view) {
           <button class="filter-pill active" data-filter="all" onclick="setFilter('all')">All</button>
           <button class="filter-pill" data-filter="situations" onclick="setFilter('situations')">Situations</button>
           <button class="filter-pill" data-filter="verbs" onclick="setFilter('verbs')">Verbs</button>
+          <button class="filter-pill" data-filter="due" onclick="setFilter('due')" id="due-pill">Due</button>
         `;
       }
       // Stagger pills fade in (no slide)
@@ -3542,23 +3647,29 @@ function updateNavDots(activeScreen) {
 function setupDirectionalSnap() {
   const home = document.getElementById('home');
   if (!home) return;
-  let scrollStart = 0;
   let snapTimer = null;
   let lastScrollY = 0;
   let scrollDir = 0;
+  let isSnapping = false;
 
   home.addEventListener('touchstart', e => {
-    scrollStart = home.scrollTop;
     lastScrollY = home.scrollTop;
     clearTimeout(snapTimer);
+    isSnapping = false; // user touched — cancel any ongoing snap
   }, { passive: true });
 
   home.addEventListener('scroll', () => {
+    if (isSnapping) return; // ignore scroll events triggered by our own snap
     const current = home.scrollTop;
     scrollDir = current > lastScrollY ? 1 : -1;
     lastScrollY = current;
     clearTimeout(snapTimer);
-    snapTimer = setTimeout(() => doSnap(scrollDir), 80);
+    snapTimer = setTimeout(() => {
+      isSnapping = true;
+      doSnap(scrollDir);
+      // Allow new snaps after animation settles
+      setTimeout(() => { isSnapping = false; }, 600);
+    }, 120);
   }, { passive: true });
 }
 
@@ -3597,6 +3708,8 @@ function doSnap(direction) {
 // ── INIT ──
 load();
 loadScripts();
+// Clear all study progress on app start — always begin decks fresh
+decks.forEach(d => clearStudyProgress(d.id));
 showScreen('home');
 renderHome();
 renderScripts();
