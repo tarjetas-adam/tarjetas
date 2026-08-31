@@ -1356,13 +1356,13 @@ function renderHome() {
             <div style="font-size:15px;font-weight:600;color:var(--ink);">${esc(deck.name)}</div>
             <div class="deck-meta" style="display:flex;align-items:center;gap:8px;">
               <span style="display:inline-block;min-width:5.5ch;">${deck.cards.length} cards</span>
-              ${(()=>{ const m=getMastery(deck.id); return (m.known.length+m.notKnown.length)>0 ? `<span style="font-size:11px;font-weight:400;color:#D4580A;background:rgba(212,88,10,0.12);border-radius:99px;padding:2px 8px;">${getMasteryPct(deck)}%</span>` : ''; })()}
+              ${(()=>{ const sr=getSR(deck.id); const hasProgress=Object.keys(sr).length>0; return hasProgress ? `<span style="font-size:11px;font-weight:400;color:#D4580A;background:rgba(212,88,10,0.12);border-radius:99px;padding:2px 8px;">${getMasteryPct(deck)}%</span>` : ''; })()}
             </div>
           </div>
           <div class="deck-actions">
             <button class="btn-secondary" data-action="autoplay" style="width:36px;height:36px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
             </button>
-            <button class="btn-primary" data-action="study" style="width:110px;text-align:center;${btnDisabled ? 'opacity:0.4;' : ''}">${btnLabel}</button>
+            <button class="btn-primary" data-action="study" style="width:110px;text-align:center;${btnDisabled ? 'opacity:0.4;pointer-events:none;' : ''}">${btnLabel}</button>
           </div>
         </div>
       </div>
@@ -1624,6 +1624,7 @@ function getDueCards(deck) {
   return deck.cards.filter(card => isDueToday(getCardSR(sr, card.id)));
 }
 function getDueCount(deck) {
+  if (!deck.lastStudied) return 0;
   return getDueCards(deck).length;
 }
 function recordSwipe(deckId, cardId, knew) {
@@ -1824,6 +1825,7 @@ function nextRound() {
 function restartStudy() {
   clearStudyProgress(currentDeckId);
   localStorage.removeItem('mastery-' + currentDeckId);
+  localStorage.removeItem('sr-' + currentDeckId);
   startStudy(currentDeckId);
 }
 
@@ -3644,72 +3646,128 @@ function updateNavDots(activeScreen) {
   });
 }
 
+
+
+function smoothScrollTo(el, target, duration) {
+  const start = el.scrollTop;
+  const dist = target - start;
+  if (Math.abs(dist) < 2) return;
+  const startTime = performance.now();
+  const ease = t => t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // ease-in-out
+  const step = (now) => {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    el.scrollTop = start + dist * ease(progress);
+    if (progress < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+let snapIsSnapping = false;
+
 function setupDirectionalSnap() {
   const home = document.getElementById('home');
   if (!home) return;
-  let snapTimer = null;
-  let lastScrollY = 0;
-  let scrollDir = 0;
-  let isSnapping = false;
+  let startY = 0;
+  let wheelTimer = null;
 
-  home.addEventListener('touchstart', e => {
-    lastScrollY = home.scrollTop;
-    clearTimeout(snapTimer);
-    isSnapping = false; // user touched — cancel any ongoing snap
-  }, { passive: true });
+  const onStart = (y) => { startY = y; snapIsSnapping = false; };
+  const onEnd = (y) => {
+    if (snapIsSnapping) return;
+    const dy = startY - y;
+    if (Math.abs(dy) < 10) return;
+    snapIsSnapping = true;
+    doSnap(dy > 0 ? 1 : -1);
+  };
 
-  home.addEventListener('scroll', () => {
-    if (isSnapping) return; // ignore scroll events triggered by our own snap
-    const current = home.scrollTop;
-    scrollDir = current > lastScrollY ? 1 : -1;
-    lastScrollY = current;
-    clearTimeout(snapTimer);
-    snapTimer = setTimeout(() => {
-      isSnapping = true;
-      doSnap(scrollDir);
-      // Allow new snaps after animation settles
-      setTimeout(() => { isSnapping = false; }, 600);
-    }, 120);
+  home.addEventListener('touchstart', e => onStart(e.touches[0].clientY), { passive: true });
+  home.addEventListener('touchend', e => onEnd(e.changedTouches[0].clientY), { passive: true });
+  home.addEventListener('mousedown', e => onStart(e.clientY));
+  home.addEventListener('mouseup', e => onEnd(e.clientY));
+  home.addEventListener('wheel', e => {
+    if (snapIsSnapping) return;
+    clearTimeout(wheelTimer);
+    wheelTimer = setTimeout(() => {
+      snapIsSnapping = true;
+      doSnap(e.deltaY > 0 ? 1 : -1);
+    }, 150);
   }, { passive: true });
 }
 
 function doSnap(direction) {
   const home = document.getElementById('home');
   if (!home) return;
-  const header = home.querySelector('.home-header');
-  const headerH = header ? header.offsetHeight : 0;
-  const scrollTop = home.scrollTop;
+  const headerH = home.querySelector('.home-header')?.offsetHeight || 0;
+  const homeTop = home.getBoundingClientRect().top + headerH;
 
-  // Get all card elements
-  const cards = home.querySelectorAll('.deck-card, .script-card');
+  const cards = Array.from(home.querySelectorAll('.deck-card, .script-card'));
   if (!cards.length) return;
 
-  // Find snap targets (top of each card relative to scroll container)
-  const targets = Array.from(cards).map(card => {
-    return card.offsetTop - headerH;
+  const positions = cards.map(card => {
+    const rect = card.getBoundingClientRect();
+    return home.scrollTop + rect.top - homeTop;
   });
-  targets.unshift(0); // top of list
 
-  // Find best target based on direction
-  let best = null;
-  if (direction > 0) {
-    // Scrolling down — snap to next card whose top is below current scroll
-    best = targets.find(t => t > scrollTop + 10);
-    if (best == null) best = targets[targets.length - 1];
-  } else {
-    // Scrolling up — snap to previous card whose top is above current scroll
-    const above = targets.filter(t => t < scrollTop - 10);
-    best = above.length ? above[above.length - 1] : 0;
+  const current = home.scrollTop;
+
+  // Find current card index — last card whose snap position is <= current scroll
+  let currentIdx = 0;
+  for (let i = 0; i < positions.length; i++) {
+    if (positions[i] <= current + 5) currentIdx = i;
+    else break;
   }
 
-  home.scrollTo({ top: Math.max(0, best), behavior: 'smooth' });
-}
+  const currentPos = positions[currentIdx];
+  const cardH = cards[currentIdx].offsetHeight;
+  const scrolledPast = current - currentPos; // how far past current card's top we've scrolled
 
-// ── INIT ──
+  let target;
+  if (direction > 0) {
+    // Scrolling down — snap forward if past 50% of current card
+    if (scrolledPast >= cardH * 0.5 && positions[currentIdx + 1] !== undefined) {
+      target = positions[currentIdx + 1];
+    } else {
+      target = currentPos;
+    }
+  } else {
+    // Scrolling up — if we've scrolled back (current < currentPos + small amount)
+    // check how much of previous card is revealed
+    if (currentIdx > 0) {
+      const prevPos = positions[currentIdx - 1];
+      const prevCardH = cards[currentIdx - 1].offsetHeight;
+      // How much of previous card is showing above currentPos?
+      const revealed = currentPos - current; // px scrolled back up
+      if (revealed >= prevCardH * 0.5) {
+        target = prevPos; // 50%+ revealed → snap to previous
+      } else {
+        target = currentPos; // less than 50% → snap back to current
+      }
+    } else {
+      target = currentPos;
+    }
+  }
+
+  const duration = 600;
+  const start = home.scrollTop;
+  const dist = Math.max(0, target) - start;
+  if (Math.abs(dist) < 2) { snapIsSnapping = false; return; }
+  const startTime = performance.now();
+  const ease = t => t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+  const step = now => {
+    const p = Math.min((now - startTime) / duration, 1);
+    home.scrollTop = start + dist * ease(p);
+    if (p < 1) requestAnimationFrame(step);
+    else setTimeout(() => { snapIsSnapping = false; }, 50);
+  };
+  requestAnimationFrame(step);
+}
 load();
 loadScripts();
-// Clear all study progress on app start — always begin decks fresh
-decks.forEach(d => clearStudyProgress(d.id));
+// Clear all study and autoplay progress on app start
+decks.forEach(d => {
+  clearStudyProgress(d.id);
+  saveAutoplayPosition(d.id, 0);
+});
 showScreen('home');
 renderHome();
 renderScripts();
@@ -3719,9 +3777,7 @@ setTimeout(setupPlayerTextSelection, 500);
 setTimeout(() => {
   const header = document.querySelector('.home-header');
   const home = document.getElementById('home');
-  if (header && home) {
-    home.style.scrollPaddingTop = header.offsetHeight + 'px';
-  }
+  if (header && home) home.style.scrollPaddingTop = header.offsetHeight + 'px';
   setupDirectionalSnap();
 }, 300);
 if (scriptUrl) {
