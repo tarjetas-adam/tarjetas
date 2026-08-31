@@ -49,7 +49,7 @@
   .screen.active { display: flex; }
 
   /* ── HOME ── */
-  #home { overflow-y: scroll; padding: 0 0 80px; -webkit-overflow-scrolling: touch; }
+  #home { overflow-y: scroll; padding: 0 0 80px; -webkit-overflow-scrolling: touch; max-height: 100dvh; }
 
   .home-header {
     padding: 52px 24px 24px;
@@ -81,7 +81,16 @@
   .filter-pill:hover { border-color: var(--accent); color: var(--ink); }
   .filter-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-  .deck-list { padding: 8px 16px; }
+  .deck-list { padding: 8px 16px 0; }
+  #deck-list-wrap { padding-bottom: 0; position: relative; }
+  #deck-bottom-cover, #script-bottom-cover {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 9;
+    background: var(--bg);
+    display: none;
+  }
   .deck-card { }
   .script-card { }
 
@@ -854,11 +863,13 @@
   <div id="deck-list-wrap">
     <div class="deck-list" id="deck-list"></div>
   </div>
+  <div id="deck-bottom-cover"></div>
 
   <!-- Scripts content (hidden initially) -->
   <div id="script-list-wrap" style="display:none;">
     <div class="deck-list" id="script-list"></div>
   </div>
+  <div id="script-bottom-cover" style="display:none;"></div>
 </div>
 
 <!-- SCRIPTS screen removed — merged into home -->
@@ -1341,8 +1352,7 @@ function renderHome() {
     if (currentFilter === 'due') return getDueCount(deck) > 0 || !deck.lastStudied;
     return true;
   });
-  filtered.forEach(deck => {
-    const div = document.createElement('div');
+  filtered.forEach(deck => {    const div = document.createElement('div');
     div.className = 'deck-card';
     const dueCount = getDueCount(deck);
     const hasBeenStudied = Object.keys(getSR(deck.id)).length > 0;
@@ -1392,6 +1402,8 @@ function renderHome() {
     attachDeckCardBehavior(div, deck.id);
     list.appendChild(div);
   });
+
+  setTimeout(() => positionCover('deck-list', 'deck-bottom-cover'), 50);
 }
 
 function attachDeckCardBehavior(div, deckId) {
@@ -1876,7 +1888,7 @@ function setupSwipe() {
     fc.style.transform = '';
     if (fc.classList.contains('flipped')) fc.style.transform = 'rotateY(180deg)';
 
-    fc.querySelector('.swipe-badge.skip').style.opacity = 0;
+    const skipBadge = fc.querySelector('.swipe-badge.skip'); if (skipBadge) skipBadge.style.opacity = 0;
     if (Math.abs(dx) > 50) {
       if (dx > 0) swipeCard('right'); else swipeCard('left');
     }
@@ -2745,6 +2757,8 @@ function renderScripts() {
     attachScriptDrag(div, script.id);
     list.appendChild(div);
   });
+
+  setTimeout(() => positionCover('script-list', 'script-bottom-cover'), 50);
 }
 
 function openAddScriptModal() {
@@ -2904,26 +2918,55 @@ function sentenceSplit(text) {
 }
 
 function startPlayer(scriptId, playBtn) {
-  // Press animation on the card's play button
   if (playBtn) {
     playBtn.classList.add('pressed');
     setTimeout(() => playBtn.classList.remove('pressed'), 300);
   }
+  const script = scripts.find(s => s.id === scriptId);
+  if (!script) return;
 
+  // If same script paused mid-way, ask continue or restart
+  if (currentScriptId === scriptId && playerIndex > 0 && playerIndex < playerSentences.length) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0);z-index:500;display:flex;align-items:center;justify-content:center;padding:24px;transition:background 0.3s ease;';
+    overlay.innerHTML = `
+      <div style="background:var(--surface);border-radius:16px;padding:28px 24px;max-width:320px;width:100%;text-align:center;opacity:0;transform:translateY(20px) scale(0.97);transition:opacity 0.3s ease, transform 0.3s cubic-bezier(0.4,0,0.2,1);">
+        <h2 style="font-size:18px;margin-bottom:8px;">Continue listening?</h2>
+        <p style="color:var(--ink-2);font-size:14px;margin-bottom:24px;">"${script.title}"</p>
+        <div style="display:flex;gap:10px;">
+          <button class="btn-secondary" style="flex:1;" id="continue-btn">Continue</button>
+          <button class="btn-primary" style="flex:1;" id="restart-btn">Restart</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    // Animate in
+    requestAnimationFrame(() => {
+      overlay.style.background = 'rgba(0,0,0,0.6)';
+      const box = overlay.querySelector('div');
+      requestAnimationFrame(() => {
+        box.style.opacity = '1';
+        box.style.transform = 'translateY(0) scale(1)';
+      });
+    });
+    overlay.querySelector('#continue-btn').addEventListener('click', () => { overlay.remove(); launchPlayer(scriptId, true); });
+    overlay.querySelector('#restart-btn').addEventListener('click', () => { overlay.remove(); launchPlayer(scriptId, false); });
+    return;
+  }
+
+  launchPlayer(scriptId, false);
+}
+
+function launchPlayer(scriptId, continueFrom) {
   const script = scripts.find(s => s.id === scriptId);
   if (!script) return;
   currentScriptId = scriptId;
   playerSentences = sentenceSplit(script.text);
-  playerIndex = 0;
+  if (!continueFrom) playerIndex = 0;
   playerPlaying = false;
   playerSpeed = 0.65;
   document.getElementById('player-title').textContent = script.title;
-
-  // Update speed buttons
-  document.querySelectorAll('.speed-btn').forEach(b => {
-    b.classList.remove('active');
-  });
-  // Animate player in after short delay, then auto-start
+  document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
   setTimeout(() => {
     showScreen('script-player');
     const playerEl = document.getElementById('script-player');
@@ -2932,12 +2975,7 @@ function startPlayer(scriptId, playBtn) {
     playerEl.classList.add('slide-in');
     renderPlayerText();
     setPlayerIcon(false);
-    // Auto-start after slide-in completes
-    setTimeout(() => {
-      playerPlaying = true;
-      setPlayerIcon(true);
-      speakCurrent();
-    }, 1200);
+    setTimeout(() => { playerPlaying = true; setPlayerIcon(true); speakCurrent(); }, 1200);
   }, 150);
 }
 
@@ -2983,6 +3021,20 @@ function renderPlayerText() {
         span.dataset.wi = allWords.length;
         span.textContent = w;
         span.style.cssText = 'display:inline;border-radius:3px;transition:background 0.1s;pointer-events:auto;-webkit-user-select:none;user-select:none;';
+        const capturedSi = si;
+        span.addEventListener('click', e => {
+          if (selectionModeActive || isSelecting) return;
+          stopPlayerSpeech();
+          playerIndex = capturedSi;
+          updatePlayerHighlight();
+          const area = document.getElementById('player-text-area');
+          if (area) {
+            const areaRect = area.getBoundingClientRect();
+            const r = span.getBoundingClientRect();
+            area.scrollTo({ top: area.scrollTop + r.top - areaRect.top - area.clientHeight * 0.35, behavior: 'smooth' });
+          }
+          setTimeout(() => { playerPlaying = true; setPlayerIcon(true); speakCurrent(); }, 600);
+        });
 
         allWords.push({ span, si, word: w });
         sentenceDiv.appendChild(span);
@@ -3028,11 +3080,11 @@ function renderPlayerText() {
 
 function updatePlayerHighlight() {
   allWords.forEach(({span, si}) => {
-    // Only show 'active' orange via word-by-word coloring, not here
     const stateClass = si < playerIndex ? 'done' : 'upcoming';
     span.className = 'player-sentence player-word ' + stateClass;
     span.style.color = '';
     span.style.fontWeight = '';
+    span.style.textShadow = '';
   });
   const active = document.querySelector('.player-sentence.active');
   if (active) {
@@ -3108,7 +3160,7 @@ function speakCurrent() {
   if (!playerPlaying) return;
 
   const sentObj = playerSentences[playerIndex];
-  const sentence = sentObj.text || sentObj;
+  const sentence = (sentObj.text || sentObj).replace(/[¡¿]/g, '');
   const words = allWords.filter(w => w.si === playerIndex);
   const wordCount = words.length;
   let boundaryFired = false;
@@ -3383,6 +3435,7 @@ function setupWordSelection(area) {
     const idx = wordIdxAt(tapX, tapY);
     if (idx < 0) return;
     const si = allWords[idx].si;
+    const wasPlaying = playerPlaying;
     stopPlayerSpeech();
     playerPlaying = false;
     setPlayerIcon(false);
@@ -3395,11 +3448,8 @@ function setupWordSelection(area) {
       const targetScroll = area.scrollTop + (wordRect.top - areaRect.top) - area.clientHeight * 0.35;
       area.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
     }
-    setTimeout(() => {
-      playerPlaying = true;
-      setPlayerIcon(true);
-      speakCurrent();
-    }, 1000);
+    // Always start playing from tapped word
+    setTimeout(() => { playerPlaying = true; setPlayerIcon(true); speakCurrent(); }, 800);
   });
 
   // MOUSE (desktop)
@@ -3565,17 +3615,37 @@ function switchToView(view) {
     if (isScripts) {
       deckWrap.style.display = 'none';
       scriptWrap.style.display = 'block';
+      document.getElementById('deck-bottom-cover').style.display = 'none';
       animateCardsIn('script-list');
+      setTimeout(() => positionCover('script-list', 'script-bottom-cover'), 100);
     } else {
       scriptWrap.style.display = 'none';
       deckWrap.style.display = 'block';
+      document.getElementById('script-bottom-cover').style.display = 'none';
       animateCardsIn('deck-list');
+      setTimeout(() => positionCover('deck-list', 'deck-bottom-cover'), 100);
     }
 
     // 6. Update nav dots
     updateNavDots(isScripts ? 'scripts' : 'home');
 
   }, 200);
+}
+
+function positionCover(listId, coverId) {
+  const cover = document.getElementById(coverId);
+  const list = document.getElementById(listId);
+  if (!cover || !list) return;
+  const cards = list.querySelectorAll('.deck-card, .script-card');
+  if (cards.length > 5) {
+    const rect5 = cards[4].getBoundingClientRect();
+    const rect6 = cards[5].getBoundingClientRect();
+    const midPoint = rect5.bottom + (rect6.top - rect5.bottom) / 2;
+    cover.style.height = (window.innerHeight - midPoint + 5) + 'px';
+    cover.style.display = 'block';
+  } else {
+    cover.style.display = 'none';
+  }
 }
 
 function animateCardsIn(listId) {
@@ -3622,19 +3692,23 @@ function setupHomeSwipe() {
     isSwiping = false;
   }, { passive: true });
 
-  // Mouse drag (desktop)
+  // Mouse drag (desktop) — works anywhere in the home area
   let mouseStartX = 0;
+  let mouseStartY = 0;
   let mouseDragging = false;
   el.addEventListener('mousedown', e => {
-    if (e.target.closest('button,input,select,textarea,.deck-card,.script-card')) return;
+    if (e.target.closest('button,input,select,textarea')) return;
     mouseStartX = e.clientX;
+    mouseStartY = e.clientY;
     mouseDragging = true;
   });
   window.addEventListener('mouseup', e => {
     if (!mouseDragging) return;
     mouseDragging = false;
     const dx = e.clientX - mouseStartX;
-    if (Math.abs(dx) < threshold) return;
+    const dy = e.clientY - mouseStartY;
+    if (Math.abs(dx) < Math.abs(dy) * 1.5) return; // not horizontal enough
+    if (Math.abs(dx) < 40) return;
     if (dx < 0 && currentView === 'decks') switchToView('scripts');
     if (dx > 0 && currentView === 'scripts') switchToView('decks');
   });
@@ -3768,6 +3842,10 @@ decks.forEach(d => {
   clearStudyProgress(d.id);
   saveAutoplayPosition(d.id, 0);
 });
+// Reset script player state
+currentScriptId = null;
+playerIndex = 0;
+playerSentences = [];
 showScreen('home');
 renderHome();
 renderScripts();
