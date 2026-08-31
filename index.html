@@ -2076,15 +2076,15 @@ function toggleAutoplay() {
 }
 
 function autoplaySkipToSpanish() {
-  // Only skip if we're in the english or waiting phase
-  if (autoplayPhase === 'spanish' || autoplayPhase === 'after-spanish') return;
+  const esEl = document.getElementById('autoplay-es-word');
+  // If Spanish is already visible, do nothing
+  if (esEl && esEl.style.opacity === '1') return;
   const deck = decks.find(d => d.id === autoplayDeckId);
   if (!deck) return;
   stopAutoplayTimer();
   window.speechSynthesis && window.speechSynthesis.cancel();
-  // Jump straight to Spanish
+  // Reveal and speak Spanish
   const card = deck.cards[autoplayIndex];
-  const esEl = document.getElementById('autoplay-es-word');
   if (esEl) esEl.style.opacity = '1';
   autoplayPhase = 'spanish';
   autoplayPlaying = true;
