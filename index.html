@@ -3646,7 +3646,11 @@ function positionCover(listId, coverId) {
   if (cards.length > 5) {
     const rect5 = cards[4].getBoundingClientRect();
     const rect6 = cards[5].getBoundingClientRect();
-    if (rect5.height === 0) { cover.style.display = 'none'; return; } // not visible yet
+    if (rect5.height === 0) {
+      // Not visible yet — retry
+      setTimeout(() => positionCover(listId, coverId), 200);
+      return;
+    }
     const midPoint = rect5.bottom + (rect6.top - rect5.bottom) / 2;
     cover.style.height = (window.innerHeight - midPoint + 5) + 'px';
     cover.style.display = 'block';
@@ -3828,19 +3832,9 @@ function doSnap(direction) {
     }
   }
 
-  const duration = 600;
-  const start = home.scrollTop;
-  const dist = Math.max(0, target) - start;
-  if (Math.abs(dist) < 2) { snapIsSnapping = false; return; }
-  const startTime = performance.now();
-  const ease = t => t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
-  const step = now => {
-    const p = Math.min((now - startTime) / duration, 1);
-    home.scrollTop = start + dist * ease(p);
-    if (p < 1) requestAnimationFrame(step);
-    else setTimeout(() => { snapIsSnapping = false; }, 50);
-  };
-  requestAnimationFrame(step);
+  home.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+  // Reset snap flag after smooth scroll completes (~600ms)
+  setTimeout(() => { snapIsSnapping = false; }, 700);
 }
 load();
 loadScripts();
