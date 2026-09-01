@@ -2697,8 +2697,8 @@ function disconnectSheet() {
 
 function handleSyncTap() {
   if (!scriptUrl) { openSyncModal(); return; }
-  if (syncStatus === 'error') { syncFromSheet(); return; }
-  syncFromSheet();
+  // Write local data first, then read back
+  syncToSheet().then(() => syncFromSheet());
 }
 
 // ── SCRIPTS ──────────────────────────────────
@@ -2798,6 +2798,7 @@ function saveScript() {
   }
   saveScripts(); renderScripts(); closeModal('modal-script');
   showToast(editingScriptId ? 'Script updated' : 'Script saved!');
+  if (scriptUrl) syncToSheet();
 }
 
 function attachScriptDrag(div, scriptId) {
@@ -3157,7 +3158,7 @@ function speakCurrent() {
     playerPlaying = false;
     setPlayerIcon(false);
     const script = scripts.find(s => s.id === currentScriptId);
-    if (script) { script.listenCount = (script.listenCount||0) + 1; saveScripts(); renderScripts(); }
+    if (script) { script.listenCount = (script.listenCount||0) + 1; saveScripts(); renderScripts(); if (scriptUrl) syncToSheet(); }
     showToast('¡Muy bien! Finished.');
     return;
   }
