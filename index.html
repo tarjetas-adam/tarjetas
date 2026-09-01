@@ -92,6 +92,7 @@
     z-index: 9;
     background: var(--bg);
     display: none;
+    transition: opacity 0.2s;
   }
   .deck-card { }
   .script-card { }
@@ -1685,8 +1686,8 @@ function setMastery(deckId, mastery) {
 function getMasteryPct(deck) {
   if (!deck.cards.length) return 0;
   const sr = getSR(deck.id);
-  const highLevel = deck.cards.filter(c => (getCardSR(sr, c.id).level || 0) >= 3).length;
-  return Math.round(highLevel / deck.cards.length * 100);
+  const known = deck.cards.filter(c => (getCardSR(sr, c.id).level || 0) >= 1).length;
+  return Math.round(known / deck.cards.length * 100);
 }
 
 // ── STUDY ──
