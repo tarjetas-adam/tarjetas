@@ -49,7 +49,9 @@
   .screen.active { display: flex; }
 
   /* ── HOME ── */
-  #home { overflow-y: scroll; padding: 0 0 80px; -webkit-overflow-scrolling: touch; max-height: 100dvh; }
+  #home { overflow-y: scroll; padding: 0 0 80px; -webkit-overflow-scrolling: touch; scroll-snap-type: y proximity; scroll-padding-top: var(--header-h, 180px); }
+  .deck-card { scroll-snap-align: start; scroll-snap-stop: normal; }
+  .script-card { scroll-snap-align: start; scroll-snap-stop: normal; }
 
   .home-header {
     padding: 52px 24px 24px;
@@ -3644,16 +3646,19 @@ function positionCover(listId, coverId) {
   if (!cover || !list) return;
   const cards = list.querySelectorAll('.deck-card, .script-card');
   if (cards.length > 5) {
-    const rect5 = cards[4].getBoundingClientRect();
-    const rect6 = cards[5].getBoundingClientRect();
-    if (rect5.height === 0) {
-      // Not visible yet — retry
-      setTimeout(() => positionCover(listId, coverId), 200);
-      return;
-    }
-    const midPoint = rect5.bottom + (rect6.top - rect5.bottom) / 2;
-    cover.style.height = (window.innerHeight - midPoint + 5) + 'px';
-    cover.style.display = 'block';
+    const home = document.getElementById('home');
+    const headerH = home ? (home.querySelector('.home-header')?.offsetHeight || 0) : 0;
+    const card5 = cards[4];
+    const card6 = cards[5];
+    // Use offsetTop relative to list
+    const listTop = list.getBoundingClientRect().top;
+    const card5Bottom = card5.getBoundingClientRect().bottom;
+    const card6Top = card6.getBoundingClientRect().top;
+    if (card5Bottom === 0) { setTimeout(() => positionCover(listId, coverId), 300); return; }
+    const midPoint = card5Bottom + (card6Top - card5Bottom) / 2;
+    const fromBottom = window.innerHeight - midPoint + 5;
+    cover.style.height = Math.max(fromBottom - 15, 0) + 'px';
+    cover.style.display = fromBottom > 0 ? 'block' : 'none';
   } else {
     cover.style.display = 'none';
   }
@@ -3748,36 +3753,7 @@ function smoothScrollTo(el, target, duration) {
   requestAnimationFrame(step);
 }
 
-let snapIsSnapping = false;
 
-function setupDirectionalSnap() {
-  const home = document.getElementById('home');
-  if (!home) return;
-  let startY = 0;
-  let wheelTimer = null;
-
-  const onStart = (y) => { startY = y; snapIsSnapping = false; };
-  const onEnd = (y) => {
-    if (snapIsSnapping) return;
-    const dy = startY - y;
-    if (Math.abs(dy) < 10) return;
-    snapIsSnapping = true;
-    doSnap(dy > 0 ? 1 : -1);
-  };
-
-  home.addEventListener('touchstart', e => onStart(e.touches[0].clientY), { passive: true });
-  home.addEventListener('touchend', e => onEnd(e.changedTouches[0].clientY), { passive: true });
-  home.addEventListener('mousedown', e => onStart(e.clientY));
-  home.addEventListener('mouseup', e => onEnd(e.clientY));
-  home.addEventListener('wheel', e => {
-    if (snapIsSnapping) return;
-    clearTimeout(wheelTimer);
-    wheelTimer = setTimeout(() => {
-      snapIsSnapping = true;
-      doSnap(e.deltaY > 0 ? 1 : -1);
-    }, 150);
-  }, { passive: true });
-}
 
 function doSnap(direction) {
   const home = document.getElementById('home');
@@ -3857,7 +3833,6 @@ setTimeout(() => {
   const header = document.querySelector('.home-header');
   const home = document.getElementById('home');
   if (header && home) home.style.scrollPaddingTop = header.offsetHeight + 'px';
-  setupDirectionalSnap();
 }, 300);
 if (scriptUrl) {
   setSyncStatus('idle');
