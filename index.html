@@ -1274,6 +1274,11 @@ async function syncFromSheet() {
     if (data.ok && data.decks) {
       decks = data.decks;
       localStorage.setItem('tarjetas-decks', JSON.stringify(decks));
+      if (data.scripts && data.scripts.length) {
+        scripts = data.scripts;
+        saveScripts();
+        renderScripts();
+      }
       setSyncStatus('ok');
       renderHome();
     } else {
@@ -1290,7 +1295,7 @@ async function syncToSheet() {
   try {
     const res = await fetch(scriptUrl, {
       method: 'POST',
-      body: JSON.stringify({ action: 'write', data: decks }),
+      body: JSON.stringify({ action: 'write', data: { decks, scripts } }),
     });
     const data = await res.json();
     setSyncStatus(data.ok ? 'ok' : 'error');
@@ -1403,7 +1408,7 @@ function renderHome() {
     list.appendChild(div);
   });
 
-  setTimeout(() => positionCover('deck-list', 'deck-bottom-cover'), 50);
+  setTimeout(() => positionCover('deck-list', 'deck-bottom-cover'), 300);
 }
 
 function attachDeckCardBehavior(div, deckId) {
@@ -2194,7 +2199,7 @@ function speakTextWithCallback(text, lang, onEnd) {
     let done = false;
     const finish = () => { if (!done) { done = true; onEnd && onEnd(); } };
     // Watchdog in case onend never fires
-    const watchdog = setTimeout(finish, Math.max(2000, text.length * 120));
+    const watchdog = setTimeout(finish, Math.max(4000, text.length * 160));
     utt.onend = () => { clearTimeout(watchdog); finish(); };
     utt.onerror = e => {
       clearTimeout(watchdog);
@@ -2758,7 +2763,7 @@ function renderScripts() {
     list.appendChild(div);
   });
 
-  setTimeout(() => positionCover('script-list', 'script-bottom-cover'), 50);
+  setTimeout(() => positionCover('script-list', 'script-bottom-cover'), 300);
 }
 
 function openAddScriptModal() {
@@ -3197,7 +3202,7 @@ function speakCurrent() {
   currentWordTimer = setTimeout(wordTick, 250);
 
   // Watchdog — if speech stalls, move on
-  const expectedMs = Math.max(2000, sentence.length * 100 / Math.max(playerSpeed, 0.1));
+  const expectedMs = Math.max(4000, sentence.length * 160 / Math.max(playerSpeed, 0.1));
   const watchdog = setTimeout(() => {
     if (playerPlaying) nextSentence();
   }, expectedMs);
@@ -3617,13 +3622,13 @@ function switchToView(view) {
       scriptWrap.style.display = 'block';
       document.getElementById('deck-bottom-cover').style.display = 'none';
       animateCardsIn('script-list');
-      setTimeout(() => positionCover('script-list', 'script-bottom-cover'), 100);
+      setTimeout(() => positionCover('script-list', 'script-bottom-cover'), 300);
     } else {
       scriptWrap.style.display = 'none';
       deckWrap.style.display = 'block';
       document.getElementById('script-bottom-cover').style.display = 'none';
       animateCardsIn('deck-list');
-      setTimeout(() => positionCover('deck-list', 'deck-bottom-cover'), 100);
+      setTimeout(() => positionCover('deck-list', 'deck-bottom-cover'), 300);
     }
 
     // 6. Update nav dots
@@ -3640,6 +3645,7 @@ function positionCover(listId, coverId) {
   if (cards.length > 5) {
     const rect5 = cards[4].getBoundingClientRect();
     const rect6 = cards[5].getBoundingClientRect();
+    if (rect5.height === 0) { cover.style.display = 'none'; return; } // not visible yet
     const midPoint = rect5.bottom + (rect6.top - rect5.bottom) / 2;
     cover.style.height = (window.innerHeight - midPoint + 5) + 'px';
     cover.style.display = 'block';
