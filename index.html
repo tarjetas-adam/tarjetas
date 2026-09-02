@@ -1603,12 +1603,16 @@ function reorderDecks(fromId, toId) {
 // ── SPACED REPETITION ──
 const SR_INTERVALS = [0, 1, 3, 7, 21, 60]; // days per level 1-5
 
+function srKey(deckId) {
+  const deck = decks.find(d => d.id === deckId);
+  return deck ? 'sr-name-' + deck.name : 'sr-' + deckId;
+}
 function getSR(deckId) {
-  const _srDeck2 = decks.find(d => d.id === deckId); const _srKey2 = _srDeck2 ? 'sr-name-' + _srDeck2.name : 'sr-' + deckId; const raw = localStorage.getItem(_srKey2) || localStorage.getItem('sr-' + deckId);
+  const raw = localStorage.getItem(srKey(deckId)) || localStorage.getItem('sr-' + deckId);
   return raw ? JSON.parse(raw) : {};
 }
 function setSR(deckId, sr) {
-  const _srDeck = decks.find(d => d.id === deckId); const _srKey = _srDeck ? 'sr-name-' + _srDeck.name : 'sr-' + deckId; localStorage.setItem(_srKey, JSON.stringify(sr));
+  localStorage.setItem(srKey(deckId), JSON.stringify(sr));
 }
 function getCardSR(sr, cardId) {
   return sr[cardId] || { level: 0, nextReview: null };
@@ -1653,11 +1657,17 @@ function recordSwipe(deckId, cardId, knew) {
   if (knew) {
     newLevel = Math.min((cd.level || 0) + 1, 5);
   } else {
-    newLevel = 1;
+    newLevel = Math.max((cd.level || 0) - 1, 0);
   }
-  const interval = SR_INTERVALS[newLevel];
-  sr[cardId] = { level: newLevel, nextReview: addDays(today(), interval) };
+  const interval = newLevel === 0 ? 1 : SR_INTERVALS[newLevel];
+  sr[cardId] = { level: newLevel, nextReview: addDays(today(), interval), knew };
   setSR(deckId, sr);
+}
+function getMasteryPct(deck) {
+  if (!deck.cards.length) return 0;
+  const sr = getSR(deck.id);
+  const known = deck.cards.filter(c => getCardSR(sr, c.id).knew === true).length;
+  return Math.round(known / deck.cards.length * 100);
 }
 function getNextReviewDays(deckId) {
   const sr = getSR(deckId);
@@ -1682,12 +1692,7 @@ function getMastery(deckId) {
 function setMastery(deckId, mastery) {
   localStorage.setItem('mastery-' + deckId, JSON.stringify(mastery));
 }
-function getMasteryPct(deck) {
-  if (!deck.cards.length) return 0;
-  const sr = getSR(deck.id);
-  const known = deck.cards.filter(c => (getCardSR(sr, c.id).level || 0) >= 1).length;
-  return Math.round(known / deck.cards.length * 100);
-}
+
 
 // ── STUDY ──
 let isFirstRound = false;
@@ -1844,7 +1849,8 @@ function nextRound() {
 function restartStudy() {
   clearStudyProgress(currentDeckId);
   localStorage.removeItem('mastery-' + currentDeckId);
-  const _srDeckR = decks.find(d => d.id === currentDeckId); localStorage.removeItem(_srDeckR ? 'sr-name-' + _srDeckR.name : 'sr-' + currentDeckId); localStorage.removeItem('sr-' + currentDeckId);
+  localStorage.removeItem(srKey(currentDeckId));
+  localStorage.removeItem('sr-' + currentDeckId);
   startStudy(currentDeckId);
 }
 
