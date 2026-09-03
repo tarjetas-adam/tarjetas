@@ -49,7 +49,7 @@
   .screen.active { display: flex; }
 
   /* ── HOME ── */
-  #home { overflow-y: scroll; padding: 0 0 80px; -webkit-overflow-scrolling: touch; scroll-snap-type: y proximity; scroll-padding-top: var(--header-h, 180px); }
+  #home { overflow-y: scroll; padding: 0 0 20px; -webkit-overflow-scrolling: touch; scroll-snap-type: y proximity; scroll-padding-top: var(--header-h, 180px); background: var(--bg); }
   .deck-card { scroll-snap-align: start; scroll-snap-stop: normal; }
   .script-card { scroll-snap-align: start; scroll-snap-stop: normal; }
 
@@ -92,7 +92,7 @@
     z-index: 9;
     background: var(--bg);
     display: none;
-    height: 38vh;
+    height: 14vh;
   }
   .deck-card { }
   .script-card { }
@@ -1118,6 +1118,9 @@
     </div>
   </div>
 </div>
+
+<!-- MODAL: Confirm Delete -->
+<div class="modal-overlay" id="modal-confirm">
   <div class="modal" style="padding-bottom:28px">
     <h2 id="confirm-title" style="font-size:18px;margin-bottom:10px"></h2>
     <p id="confirm-msg" style="color:var(--ink-2);font-size:14px;line-height:1.5;margin-bottom:20px"></p>
@@ -1286,7 +1289,10 @@ async function syncFromSheet() {
       decks = data.decks;
       localStorage.setItem('tarjetas-decks', JSON.stringify(decks));
       if (data.scripts && data.scripts.length) {
-        scripts = data.scripts;
+        scripts = data.scripts.map(s => ({
+          ...s,
+          text: (s.text || '').replace(/\\n/g, '\n')
+        }));
         saveScripts();
         renderScripts();
       }
@@ -2749,7 +2755,11 @@ let selectedScriptRange = null;
 function loadScripts() {
   const raw = localStorage.getItem('tarjetas-scripts');
   if (raw) {
-    scripts = JSON.parse(raw);
+    scripts = JSON.parse(raw).map(s => ({
+      ...s,
+      text: (s.text || '').replace(/\\n/g, '\n')
+    }));
+    saveScripts(); // re-save decoded version
   } else {
     scripts = [{
       id: 'script-1',
@@ -3838,6 +3848,8 @@ decks.forEach(d => {
 currentScriptId = null;
 playerIndex = 0;
 playerSentences = [];
+// Close any modals left open from previous session
+document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
 showScreen('home');
 renderHome();
 renderScripts();
