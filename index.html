@@ -1291,7 +1291,7 @@ async function syncFromSheet() {
       if (data.scripts && data.scripts.length) {
         scripts = data.scripts.map(s => ({
           ...s,
-          text: (s.text || '').replace(/\\n/g, '\n')
+          text: (s.text || '').replace(/[¡¿]/g, '').replace(/\\n/g, '\n')
         }));
         saveScripts();
         renderScripts();
@@ -2757,7 +2757,7 @@ function loadScripts() {
   if (raw) {
     scripts = JSON.parse(raw).map(s => ({
       ...s,
-      text: (s.text || '').replace(/\\n/g, '\n')
+      text: (s.text || '').replace(/[¡¿]/g, '').replace(/\\n/g, '\n')
     }));
     saveScripts(); // re-save decoded version
   } else {
