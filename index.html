@@ -92,7 +92,8 @@
     z-index: 9;
     background: var(--bg);
     display: none;
-    height: 10vh;
+    /* height set precisely by JS (positionCover) — no fixed vh, since card
+       height varies with content (badges, name length, etc.) */
   }
   .deck-card { }
   .script-card { }
@@ -3684,9 +3685,26 @@ function switchToView(view) {
 function positionCover(listId, coverId) {
   const cover = document.getElementById(coverId);
   const list = document.getElementById(listId);
-  if (!cover || !list) return;
-  const cards = list.querySelectorAll('.deck-card, .script-card');
-  cover.style.display = cards.length > 5 ? 'block' : 'none';
+  const home = document.getElementById('home');
+  if (!cover || !list || !home) return;
+  const cards = Array.from(list.querySelectorAll('.deck-card, .script-card'));
+  if (cards.length <= 5) { cover.style.display = 'none'; return; }
+
+  // Measure from resting scroll position (top), so the boundary is exact
+  // regardless of where the user currently is in the list. This is a
+  // synchronous read-then-restore — no visible jump.
+  const prevScroll = home.scrollTop;
+  home.scrollTop = 0;
+  const card5Rect = cards[4].getBoundingClientRect();
+  const card6Rect = cards[5].getBoundingClientRect();
+  home.scrollTop = prevScroll;
+
+  // Cover should start exactly at the midpoint of the gap between card 5
+  // and card 6, so 5 full cards are visible and the 6th is fully hidden.
+  const boundary = (card5Rect.bottom + card6Rect.top) / 2;
+  const coverHeight = Math.max(0, window.innerHeight - boundary);
+  cover.style.height = coverHeight + 'px';
+  cover.style.display = 'block';
 }
 
 function animateCardsIn(listId) {
@@ -3753,6 +3771,15 @@ function setupHomeSwipe() {
     if (dx < 0 && currentView === 'decks') switchToView('scripts');
     if (dx > 0 && currentView === 'scripts') switchToView('decks');
   });
+}
+
+function repositionActiveCover() {
+  if (currentView === 'scripts') positionCover('script-list', 'script-bottom-cover');
+  else positionCover('deck-list', 'deck-bottom-cover');
+}
+window.addEventListener('resize', repositionActiveCover);
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(repositionActiveCover);
 }
 
 function updateNavDots(activeScreen) {
