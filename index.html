@@ -1272,6 +1272,10 @@ let syncStatus = 'idle'; // idle | syncing | error | ok
 
 function save() {
   localStorage.setItem('tarjetas-decks', JSON.stringify(decks));
+  // Push to the Sheet immediately too. Previously this only wrote to
+  // localStorage, so a new deck/card that hadn't been manually synced yet
+  // could get silently wiped out by syncFromSheet() on the next app load.
+  if (scriptUrl) syncToSheet();
 }
 
 function load() {
