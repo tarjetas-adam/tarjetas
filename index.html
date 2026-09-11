@@ -1694,8 +1694,13 @@ function getMasteryPct(deck) {
   if (!deck.cards.length) return 0;
   const sr = getSR(deck.id);
   if (!Object.keys(sr).length) return 0;
-  const known = deck.cards.filter(c => getCardSR(sr, c.id).knew === true).length;
-  return Math.round(known / deck.cards.length * 100);
+  // Only count cards that have actually been swiped at least once.
+  // Cards never reached in a session (e.g. exited early) must not be
+  // treated as "gotten wrong" just because they lack an SR entry.
+  const attempted = deck.cards.filter(c => getCardSR(sr, c.id).knew !== null);
+  if (!attempted.length) return 0;
+  const known = attempted.filter(c => getCardSR(sr, c.id).knew === true).length;
+  return Math.round(known / attempted.length * 100);
 }
 function getNextReviewDays(deckId) {
   const sr = getSR(deckId);
