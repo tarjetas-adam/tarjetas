@@ -1494,12 +1494,6 @@ function attachDeckCardBehavior(div, deckId) {
     `;
     document.body.appendChild(ghost);
 
-    // Lock scrolling for the duration of the drag so the position snapshot
-    // below can never go stale — even a small native scroll bleed-through
-    // would shift the real cards without us knowing.
-    const home = document.getElementById('home');
-    if (home) { home.dataset.prevOverflowY = home.style.overflowY || ''; home.style.overflowY = 'hidden'; }
-
     // Snapshot every other card's true position now, before any shifting
     // starts. Hit-testing always compares against this fixed snapshot,
     // never a live getBoundingClientRect() — reading live rects while a
@@ -1520,14 +1514,13 @@ function attachDeckCardBehavior(div, deckId) {
     if (!dragging) return;
     ghost.style.top = (clientY - ghostOffsetY) + 'px';
 
-    // Use the leading edge of the dragged card — its bottom when moving
-    // down, its top when moving up — against each other card's midpoint,
-    // rather than just the raw finger position.
-    const movingDown = clientY >= lastY;
-    lastY = clientY;
-    const ghostTop = clientY - ghostOffsetY;
-    const ghostBottom = ghostTop + dragCardH;
-    const edgeY = movingDown ? ghostBottom : ghostTop;
+    // Use the dragged card's center as the reference point for hit-testing.
+    // (Previously this switched between the card's top/bottom edge based on
+    // instantaneous direction, but natural hand jitter kept flipping that
+    // direction back and forth, and each flip swapped the reference by a
+    // full card height — causing the target to snap back and forth. The
+    // center is a single smooth value with no such flip.)
+    const ghostCenterY = (clientY - ghostOffsetY) + dragCardH / 2;
 
     const list = document.getElementById('deck-list');
     const fromIdx = decks.findIndex(d => d.id === deckId);
@@ -1538,7 +1531,7 @@ function attachDeckCardBehavior(div, deckId) {
     for (const card of cards) {
       const pos = basePositions.get(card.dataset.id);
       if (!pos) continue;
-      if (edgeY < pos.top + pos.height * 0.5) { insertBefore = card; break; }
+      if (ghostCenterY < pos.top + pos.height * 0.5) { insertBefore = card; break; }
     }
 
     const targetId = insertBefore ? insertBefore.dataset.id : '__end__';
@@ -1572,9 +1565,6 @@ function attachDeckCardBehavior(div, deckId) {
 
     div.classList.remove('dragging');
     if (ghost) { ghost.remove(); ghost = null; }
-
-    const homeEl = document.getElementById('home');
-    if (homeEl) { homeEl.style.overflowY = homeEl.dataset.prevOverflowY || ''; delete homeEl.dataset.prevOverflowY; }
 
     const list = document.getElementById('deck-list');
     const allCards = [...list.querySelectorAll('.deck-card')];
