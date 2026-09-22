@@ -1556,6 +1556,12 @@ function attachDeckCardBehavior(div, deckId) {
 
   const endDrag = (clientY) => {
     if (!dragging) return;
+
+    // Recalculate one final time using the exact release position — the
+    // last touchmove sample can lag slightly behind the real finger
+    // position on a fast drag, causing the drop to commit to the wrong slot.
+    moveDrag(clientY);
+
     dragging = false;
 
     // Use the last tracked drop target — this reflects where the gap visually was
