@@ -755,6 +755,7 @@
     height: 100%;
     background: var(--accent);
     border-radius: 99px;
+    transition: width 1.1s linear;
   }
 
   .player-controls {
@@ -3192,11 +3193,11 @@ function updatePlayerHighlight() {
       const areaRect = area.getBoundingClientRect();
       const elRect = active.getBoundingClientRect();
       const elCenter = elRect.top - areaRect.top + area.scrollTop;
-      // Only scroll if element is in the bottom 40% of visible area
-      const visibleBottom = area.scrollTop + area.clientHeight * 0.6;
+      // Catch up before the active line reaches the bottom fade zone
+      const visibleBottom = area.scrollTop + area.clientHeight * 0.45;
       if (elCenter > visibleBottom) {
-        // Jump by ~3 line heights at a time
-        const lineH = elRect.height * 3.5;
+        // Jump further so the line lands clearly above the fade, not right at its edge
+        const lineH = elRect.height * 5.5;
         area.scrollTo({ top: area.scrollTop + lineH, behavior: 'smooth' });
       }
     }
@@ -3334,9 +3335,9 @@ function scrollToActiveSentence() {
   const elRect = firstActive.span.getBoundingClientRect();
   const areaRect = area.getBoundingClientRect();
   const elTop = elRect.top - areaRect.top + area.scrollTop;
-  const visibleBottom = area.scrollTop + area.clientHeight * 0.6;
+  const visibleBottom = area.scrollTop + area.clientHeight * 0.45;
   if (elTop > visibleBottom) {
-    const lineH = elRect.height * 3.5;
+    const lineH = elRect.height * 5.5;
     area.scrollTo({ top: area.scrollTop + lineH, behavior: 'smooth' });
   }
 }
